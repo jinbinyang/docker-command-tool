@@ -1,0 +1,1832 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Docker Command Tool</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #edf3f8;
+      --panel: #ffffff;
+      --panel-2: #f8fafc;
+      --text: #172033;
+      --muted: #657386;
+      --line: #d6dee9;
+      --strong-line: #b9c4d3;
+      --blue: #2496ed;
+      --blue-2: #0b64b1;
+      --green: #087f5b;
+      --red: #b42318;
+      --amber: #b54708;
+      --shadow: 0 12px 32px rgba(16, 24, 40, .10);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      letter-spacing: 0;
+    }
+    button, input, select, textarea { font: inherit; letter-spacing: 0; }
+    button { cursor: pointer; }
+    .app {
+      display: grid;
+      grid-template-columns: 250px minmax(420px, 1fr) 390px;
+      min-height: 100vh;
+    }
+    .sidebar {
+      border-right: 1px solid var(--line);
+      background: #f5f8fb;
+      padding: 18px 14px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 2px 4px 16px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 14px;
+    }
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: var(--blue);
+      font-size: 13px;
+      font-weight: 900;
+      box-shadow: inset 0 -10px 18px rgba(0, 0, 0, .12);
+      flex: 0 0 auto;
+    }
+    .brand-name { font-size: 15px; font-weight: 800; line-height: 1.2; }
+    .brand-sub { margin-top: 3px; font-size: 12px; color: var(--muted); }
+    .side-label { color: var(--muted); font-size: 12px; font-weight: 700; margin: 14px 4px 8px; }
+    .category-list, .command-list { display: grid; gap: 7px; }
+    .category-button, .command-button {
+      width: 100%;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text);
+      border-radius: 8px;
+      text-align: left;
+      transition: background .12s ease, border-color .12s ease, transform .12s ease;
+    }
+    .category-button {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      align-items: center;
+      gap: 9px;
+      padding: 9px;
+    }
+    .category-button:hover, .command-button:hover { background: #eaf5ff; border-color: #b9dbff; }
+    .category-button.active, .command-button.active {
+      background: #dff0ff;
+      border-color: #9ccdff;
+      box-shadow: 0 1px 0 rgba(36, 150, 237, .18);
+    }
+    .cat-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      background: #dcecff;
+      color: var(--blue-2);
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .cat-name, .cmd-name { font-size: 13px; font-weight: 750; line-height: 1.22; }
+    .cat-count { color: var(--muted); font-size: 12px; }
+    .main { padding: 20px 22px 24px; overflow: auto; }
+    .main-inner { max-width: 1050px; margin: 0 auto; display: grid; gap: 16px; }
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(280px, 1fr) auto;
+      gap: 14px;
+      align-items: start;
+    }
+    h1 { margin: 0; font-size: 25px; line-height: 1.18; }
+    .lead { margin: 7px 0 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .doc-link {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--blue-2);
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .section-title { font-size: 14px; font-weight: 800; margin: 0; }
+    .section-note { color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .inputs {
+      padding: 16px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .field { display: grid; gap: 6px; min-width: 0; }
+    .field.wide { grid-column: span 2; }
+    label { font-size: 12px; color: #344054; font-weight: 750; }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--strong-line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      padding: 9px 10px;
+      min-height: 38px;
+      outline: none;
+    }
+    textarea {
+      min-height: 78px;
+      resize: vertical;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(36, 150, 237, .14);
+    }
+    .toggles {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      padding-top: 2px;
+    }
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      border-radius: 8px;
+      padding: 7px 9px;
+      color: #344054;
+      font-size: 12px;
+      font-weight: 700;
+      user-select: none;
+    }
+    .toggle input { width: 15px; height: 15px; min-height: auto; padding: 0; }
+    .command-area {
+      display: grid;
+      grid-template-columns: 265px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .command-panel {
+      position: sticky;
+      top: 16px;
+      padding: 12px;
+      max-height: calc(100vh - 32px);
+      overflow: auto;
+    }
+    .command-button {
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 8px;
+      padding: 9px 8px;
+      min-height: 54px;
+      align-items: start;
+    }
+    .drag-handle {
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      color: var(--muted);
+      border-radius: 6px;
+      background: #eef2f7;
+      cursor: grab;
+      line-height: 1;
+      font-size: 16px;
+      touch-action: none;
+    }
+    .command-button.dragging { opacity: .55; transform: scale(.99); }
+    .command-button.drop-target { border-color: var(--blue); box-shadow: inset 0 0 0 1px rgba(36, 150, 237, .35); }
+    .cmd-desc { margin-top: 4px; font-size: 12px; line-height: 1.35; color: var(--muted); }
+    .details { display: grid; gap: 14px; }
+    .selected-head { padding: 16px; display: grid; gap: 8px; }
+    .selected-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .selected-title { margin: 0; font-size: 18px; line-height: 1.2; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 8px;
+      color: #1d2939;
+      background: #eef7ff;
+      border: 1px solid #bfdbfe;
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+    .selected-desc { color: var(--muted); font-size: 13px; line-height: 1.55; margin: 0; }
+    .command-output { padding: 16px; display: grid; gap: 12px; }
+    .command-box {
+      background: #0f172a;
+      color: #e6edf6;
+      border: 1px solid #1f2937;
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 118px;
+      overflow: hidden;
+    }
+    .command-code {
+      margin: 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .copy-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .copy-button, .small-button {
+      border: 1px solid var(--blue);
+      background: var(--blue);
+      color: #fff;
+      border-radius: 8px;
+      min-height: 36px;
+      padding: 8px 11px;
+      font-size: 13px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+    .small-button.secondary { background: #fff; color: var(--blue-2); border-color: #b7d7f7; }
+    .copy-status { font-size: 12px; color: var(--green); min-height: 17px; }
+    .warning-list { display: none; gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .warning-list.show { display: grid; }
+    .warning-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      border: 1px solid #fed7aa;
+      background: #fff7ed;
+      color: #9a3412;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .tabs { display: flex; gap: 10px; border-bottom: 1px solid var(--line); padding: 0 16px; }
+    .tab-button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      padding: 11px 3px 10px;
+      border-bottom: 2px solid transparent;
+    }
+    .tab-button.active { color: var(--blue-2); border-bottom-color: var(--blue); }
+    .tab-body { padding: 15px 16px 16px; }
+    .explain { color: #344054; font-size: 13px; line-height: 1.6; margin: 0; }
+    .param-section { display: grid; gap: 8px; }
+    .param-section + .param-section { margin-top: 16px; }
+    .param-title { margin: 0; color: #101828; font-size: 13px; font-weight: 850; }
+    .param-note { margin: -2px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .param-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .param-table th, .param-table td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px 8px;
+      text-align: left;
+      vertical-align: top;
+      line-height: 1.45;
+    }
+    .param-table th { color: #344054; font-weight: 800; background: #f8fafc; }
+    .param-table code, .tips code, .source-row code {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: #eef2f7;
+      color: #101828;
+      border-radius: 5px;
+      padding: 1px 4px;
+    }
+    .tips { margin: 0; padding-left: 17px; color: #344054; font-size: 13px; line-height: 1.65; }
+    .source-row {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .source-row a { color: var(--blue-2); font-weight: 750; text-decoration: none; }
+    .filter-box { margin-bottom: 10px; }
+    .empty-state {
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      color: var(--muted);
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .rightbar {
+      border-left: 1px solid var(--line);
+      background: #f7fafc;
+      padding: 18px 14px;
+      height: 100vh;
+      position: sticky;
+      top: 0;
+      overflow: auto;
+    }
+    .playbook-list { display: grid; gap: 10px; }
+    .playbook {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .playbook-title { margin: 0 0 8px; font-size: 13px; line-height: 1.35; }
+    .playbook ol { margin: 0 0 9px; padding-left: 18px; color: #344054; font-size: 12px; line-height: 1.55; }
+    .mini-code {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 7px;
+      padding: 8px;
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    @media (max-width: 1280px) {
+      .app { grid-template-columns: 230px minmax(0, 1fr); }
+      .rightbar { grid-column: 1 / -1; height: auto; position: static; border-left: 0; border-top: 1px solid var(--line); }
+    }
+    @media (max-width: 900px) {
+      .app { display: block; }
+      .sidebar { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+      .main { padding: 16px; }
+      .topbar { grid-template-columns: 1fr; }
+      .inputs { grid-template-columns: 1fr; }
+      .field.wide { grid-column: auto; }
+      .command-area { grid-template-columns: 1fr; }
+      .command-panel { position: static; max-height: none; }
+      h1 { font-size: 21px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">DKR</div>
+        <div>
+          <div class="brand-name">Docker Command Tool</div>
+          <div class="brand-sub">Docker 命令生成器</div>
+        </div>
+      </div>
+      <div class="side-label">分类</div>
+      <div class="category-list" id="categoryList"></div>
+    </aside>
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="topbar">
+          <div>
+            <h1>自动生成 Docker 镜像、调试与发布命令</h1>
+            <p class="lead">填写镜像、容器、registry、tag、端口、volume 等信息，选择分类和命令按钮，生成可复制运行的命令。空字段会自动跳过或保留占位符。</p>
+          </div>
+          <a class="doc-link" href="https://docs.docker.com/reference/cli/docker/" target="_blank" rel="noreferrer">Docker 官方 CLI 文档</a>
+        </div>
+
+        <section class="section">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">全局输入</h2>
+              <div class="section-note">按命令使用需要的字段；灰色示例不会参与生成。</div>
+            </div>
+            <button class="small-button secondary" type="button" id="resetInputsBtn">重置输入</button>
+          </div>
+          <div class="inputs" id="inputGrid">
+            <div class="field"><label for="workDirInput">工作目录</label><input id="workDirInput" data-field="workDir" placeholder="/path/to/project"></div>
+            <div class="field"><label for="contextInput">context</label><input id="contextInput" data-field="context" placeholder="default / remote"></div>
+            <div class="field"><label for="imageInput">image</label><input id="imageInput" data-field="image" placeholder="nginx:latest"></div>
+            <div class="field"><label for="targetImageInput">target image</label><input id="targetImageInput" data-field="targetImage" placeholder="registry.example.com/app:1.0.0"></div>
+
+            <div class="field"><label for="registryInput">registry</label><input id="registryInput" data-field="registry" placeholder="registry.example.com"></div>
+            <div class="field"><label for="repoInput">repository</label><input id="repoInput" data-field="repo" placeholder="team/app"></div>
+            <div class="field"><label for="tagInput">tag</label><input id="tagInput" data-field="tag" placeholder="v1.0.0"></div>
+            <div class="field"><label for="platformInput">platform</label><input id="platformInput" data-field="platform" placeholder="linux/amd64,linux/arm64"></div>
+
+            <div class="field"><label for="containerInput">container</label><input id="containerInput" data-field="container" placeholder="app-debug"></div>
+            <div class="field"><label for="targetNameInput">target name</label><input id="targetNameInput" data-field="targetName" placeholder="new-container / alias"></div>
+            <div class="field"><label for="serviceInput">compose service</label><input id="serviceInput" data-field="service" placeholder="web"></div>
+            <div class="field"><label for="networkInput">network</label><input id="networkInput" data-field="network" placeholder="app-net"></div>
+            <div class="field"><label for="volumeInput">volume</label><input id="volumeInput" data-field="volume" placeholder="app-data"></div>
+
+            <div class="field"><label for="hostPortInput">host port</label><input id="hostPortInput" data-field="hostPort" placeholder="8080"></div>
+            <div class="field"><label for="containerPortInput">container port</label><input id="containerPortInput" data-field="containerPort" placeholder="80"></div>
+            <div class="field"><label for="envInput">env</label><input id="envInput" data-field="env" placeholder="SPRING_PROFILES_ACTIVE=dev"></div>
+            <div class="field"><label for="mountInput">mount / bind</label><input id="mountInput" data-field="mount" placeholder="$PWD:/work"></div>
+
+            <div class="field"><label for="dockerfileInput">Dockerfile</label><input id="dockerfileInput" data-field="dockerfile" placeholder="Dockerfile"></div>
+            <div class="field"><label for="buildContextInput">build context</label><input id="buildContextInput" data-field="buildContext" placeholder="."></div>
+            <div class="field"><label for="buildArgInput">build arg</label><input id="buildArgInput" data-field="buildArg" placeholder="VERSION=1.0.0"></div>
+            <div class="field"><label for="targetStageInput">target stage</label><input id="targetStageInput" data-field="targetStage" placeholder="builder"></div>
+
+            <div class="field"><label for="composeFileInput">compose file</label><input id="composeFileInput" data-field="composeFile" placeholder="docker-compose.yml"></div>
+            <div class="field"><label for="projectInput">compose project</label><input id="projectInput" data-field="project" placeholder="myapp"></div>
+            <div class="field"><label for="outputFileInput">output file</label><input id="outputFileInput" data-field="outputFile" placeholder="./image.tar"></div>
+            <div class="field"><label for="filterInput">filter / format</label><input id="filterInput" data-field="filter" placeholder="dangling=true / '{{.ID}}'"></div>
+
+            <div class="field wide"><label for="commandInput">container command</label><input id="commandInput" data-field="command" placeholder="sh / bash / curl -v http://service:80"></div>
+            <div class="field wide"><label for="extraInput">extra</label><input id="extraInput" data-field="extra" placeholder="--pull=always / --no-cache / --since 1h"></div>
+
+            <div class="toggles">
+              <label class="toggle"><input type="checkbox" data-field="detach"> detach (-d)</label>
+              <label class="toggle"><input type="checkbox" data-field="interactive"> interactive (-it)</label>
+              <label class="toggle"><input type="checkbox" data-field="remove"> rm / cleanup</label>
+              <label class="toggle"><input type="checkbox" data-field="follow"> follow logs</label>
+              <label class="toggle"><input type="checkbox" data-field="all"> all / all tags</label>
+              <label class="toggle"><input type="checkbox" data-field="force"> force</label>
+              <label class="toggle"><input type="checkbox" data-field="verbose"> verbose</label>
+              <label class="toggle"><input type="checkbox" data-field="noTrunc"> no-trunc</label>
+              <label class="toggle"><input type="checkbox" data-field="noCache"> no-cache</label>
+              <label class="toggle"><input type="checkbox" data-field="push"> push</label>
+            </div>
+          </div>
+        </section>
+
+        <div class="command-area">
+          <section class="section command-panel">
+            <div class="section-head">
+              <div>
+                <h2 class="section-title" id="commandListTitle">命令</h2>
+                <div class="section-note">拖拽按钮可自定义排序。</div>
+              </div>
+              <button class="small-button secondary" type="button" id="resetOrderBtn">默认</button>
+            </div>
+            <div class="filter-box"><input id="commandFilter" placeholder="过滤命令"></div>
+            <div class="command-list" id="commandList"></div>
+          </section>
+
+          <section class="details">
+            <section class="section">
+              <div class="selected-head">
+                <div class="selected-title-row">
+                  <h2 class="selected-title" id="selectedTitle"></h2>
+                  <span class="badge" id="selectedCategory"></span>
+                </div>
+                <p class="selected-desc" id="selectedDesc"></p>
+              </div>
+            </section>
+            <section class="section command-output">
+              <div class="copy-row">
+                <div>
+                  <h2 class="section-title">生成命令</h2>
+                  <div class="section-note">复制后可直接在终端运行。</div>
+                </div>
+                <button class="copy-button" type="button" id="copyBtn">复制命令</button>
+              </div>
+              <div class="command-box"><pre class="command-code" id="commandCode"></pre></div>
+              <div class="copy-status" id="copyStatus"></div>
+              <ul class="warning-list" id="warningList"></ul>
+            </section>
+            <section class="section">
+              <div class="tabs" role="tablist">
+                <button class="tab-button active" type="button" data-tab="explain">解释</button>
+                <button class="tab-button" type="button" data-tab="params">参数</button>
+                <button class="tab-button" type="button" data-tab="tips">排查提示</button>
+              </div>
+              <div class="tab-body" id="tabBody"></div>
+            </section>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <aside class="rightbar">
+      <div class="section-head" style="padding:0 0 12px;border-bottom:0;">
+        <div>
+          <h2 class="section-title">排查流程</h2>
+          <div class="section-note">常见 Docker 场景命令组合。</div>
+        </div>
+      </div>
+      <div class="playbook-list">
+        <div class="playbook"><h3 class="playbook-title">查看本地镜像</h3><ol><li>先列出镜像和 digest。</li><li>查看层历史和构建命令。</li><li>inspect 获取入口点、环境变量、架构。</li></ol><div class="mini-code">docker image ls
+docker image history nginx:latest
+docker image inspect nginx:latest</div></div>
+        <div class="playbook"><h3 class="playbook-title">拉取工具镜像调试</h3><ol><li>拉取 busybox/alpine/netshoot。</li><li>临时容器挂载当前目录或加入网络。</li><li>执行 shell/curl/dig 等工具。</li></ol><div class="mini-code">docker pull nicolaka/netshoot:latest
+docker run --rm -it --network app-net nicolaka/netshoot:latest sh
+docker run --rm -it -v "$PWD:/work" busybox sh</div></div>
+        <div class="playbook"><h3 class="playbook-title">打 tag 并上传镜像</h3><ol><li>确认本地镜像存在。</li><li>打成 registry/repo:tag。</li><li>登录 registry 后 push。</li></ol><div class="mini-code">docker image ls
+docker image tag app:local registry.example.com/team/app:v1
+docker login registry.example.com
+docker image push registry.example.com/team/app:v1</div></div>
+        <div class="playbook"><h3 class="playbook-title">本地构建并推送</h3><ol><li>用 buildx 构建。</li><li>需要多架构时指定 platform。</li><li>用 --push 直接推送或 --load 导入本地。</li></ol><div class="mini-code">docker buildx build -t registry.example.com/team/app:v1 .
+docker buildx build --platform linux/amd64,linux/arm64 -t registry.example.com/team/app:v1 --push .</div></div>
+        <div class="playbook"><h3 class="playbook-title">容器启动失败</h3><ol><li>查看 ps -a 和退出码。</li><li>看日志和 inspect。</li><li>覆盖 entrypoint 进入 shell。</li></ol><div class="mini-code">docker ps -a
+docker logs --tail 200 app
+docker inspect app
+docker run --rm -it --entrypoint sh app:latest</div></div>
+        <div class="playbook"><h3 class="playbook-title">容器内排查</h3><ol><li>exec 进入容器。</li><li>查看进程、端口、环境变量。</li><li>复制文件或导出变更。</li></ol><div class="mini-code">docker exec -it app sh
+docker top app
+docker port app
+docker cp app:/tmp/report.txt ./report.txt</div></div>
+        <div class="playbook"><h3 class="playbook-title">网络连通性</h3><ol><li>列出 network 和容器归属。</li><li>inspect 网络。</li><li>用工具容器加入网络测试。</li></ol><div class="mini-code">docker network ls
+docker network inspect app-net
+docker run --rm -it --network app-net nicolaka/netshoot curl -v http://service:80</div></div>
+        <div class="playbook"><h3 class="playbook-title">磁盘空间清理</h3><ol><li>先看 docker system df。</li><li>优先 prune 未使用对象。</li><li>强制删除镜像/volume 前确认影响。</li></ol><div class="mini-code">docker system df -v
+docker image prune
+docker builder prune
+docker system prune --volumes</div></div>
+        <div class="playbook"><h3 class="playbook-title">Compose 本地联调</h3><ol><li>先 config 验证配置。</li><li>up 启动并看日志。</li><li>按 service exec/run。</li></ol><div class="mini-code">docker compose config
+docker compose up -d --build
+docker compose logs -f web
+docker compose exec web sh</div></div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const VERSION = "v1-20260615-2";
+    const ORDER_KEY = "dockerCommandTool.commandOrder.v1";
+    const INPUT_KEY = "dockerCommandTool.inputs.v1";
+
+    const categories = [
+      { id: "images", name: "镜像 / Image", icon: "IMG" },
+      { id: "containers", name: "容器运行", icon: "RUN" },
+      { id: "debug", name: "日志 / 调试", icon: "DBG" },
+      { id: "registry", name: "Registry / 发布", icon: "REG" },
+      { id: "build", name: "构建 / Buildx", icon: "BLD" },
+      { id: "compose", name: "Compose", icon: "CMP" },
+      { id: "network", name: "网络 / 卷", icon: "NET" },
+      { id: "system", name: "系统 / 清理", icon: "SYS" },
+      { id: "security", name: "安全 / 元数据", icon: "SEC" }
+    ];
+
+    const docs = {
+      index: "https://docs.docker.com/reference/cli/docker/",
+      run: "https://docs.docker.com/reference/cli/docker/container/run/",
+      debug: "https://docs.docker.com/reference/cli/docker/debug/",
+      attach: "https://docs.docker.com/reference/cli/docker/container/attach/",
+      create: "https://docs.docker.com/reference/cli/docker/container/create/",
+      exec: "https://docs.docker.com/reference/cli/docker/container/exec/",
+      exportContainer: "https://docs.docker.com/reference/cli/docker/container/export/",
+      kill: "https://docs.docker.com/reference/cli/docker/container/kill/",
+      logs: "https://docs.docker.com/reference/cli/docker/container/logs/",
+      inspect: "https://docs.docker.com/reference/cli/docker/container/inspect/",
+      cp: "https://docs.docker.com/reference/cli/docker/container/cp/",
+      commit: "https://docs.docker.com/reference/cli/docker/container/commit/",
+      pause: "https://docs.docker.com/reference/cli/docker/container/pause/",
+      ps: "https://docs.docker.com/reference/cli/docker/container/ls/",
+      rename: "https://docs.docker.com/reference/cli/docker/container/rename/",
+      stats: "https://docs.docker.com/reference/cli/docker/container/stats/",
+      containerPrune: "https://docs.docker.com/reference/cli/docker/container/prune/",
+      update: "https://docs.docker.com/reference/cli/docker/container/update/",
+      wait: "https://docs.docker.com/reference/cli/docker/container/wait/",
+      unpause: "https://docs.docker.com/reference/cli/docker/container/unpause/",
+      imageLs: "https://docs.docker.com/reference/cli/docker/image/ls/",
+      search: "https://docs.docker.com/reference/cli/docker/search/",
+      imageImport: "https://docs.docker.com/reference/cli/docker/image/import/",
+      pull: "https://docs.docker.com/reference/cli/docker/image/pull/",
+      tag: "https://docs.docker.com/reference/cli/docker/image/tag/",
+      push: "https://docs.docker.com/reference/cli/docker/image/push/",
+      history: "https://docs.docker.com/reference/cli/docker/image/history/",
+      imageInspect: "https://docs.docker.com/reference/cli/docker/image/inspect/",
+      save: "https://docs.docker.com/reference/cli/docker/image/save/",
+      load: "https://docs.docker.com/reference/cli/docker/image/load/",
+      rmImage: "https://docs.docker.com/reference/cli/docker/image/rm/",
+      buildx: "https://docs.docker.com/reference/cli/docker/buildx/build/",
+      buildxBake: "https://docs.docker.com/reference/cli/docker/buildx/bake/",
+      buildxDu: "https://docs.docker.com/reference/cli/docker/buildx/du/",
+      buildxInspect: "https://docs.docker.com/reference/cli/docker/buildx/inspect/",
+      buildxLs: "https://docs.docker.com/reference/cli/docker/buildx/ls/",
+      buildxCreate: "https://docs.docker.com/reference/cli/docker/buildx/create/",
+      buildxRm: "https://docs.docker.com/reference/cli/docker/buildx/rm/",
+      buildxUse: "https://docs.docker.com/reference/cli/docker/buildx/use/",
+      compose: "https://docs.docker.com/reference/cli/docker/compose/",
+      composeUp: "https://docs.docker.com/reference/cli/docker/compose/up/",
+      composeDown: "https://docs.docker.com/reference/cli/docker/compose/down/",
+      network: "https://docs.docker.com/reference/cli/docker/network/",
+      networkPrune: "https://docs.docker.com/reference/cli/docker/network/prune/",
+      volume: "https://docs.docker.com/reference/cli/docker/volume/",
+      volumePrune: "https://docs.docker.com/reference/cli/docker/volume/prune/",
+      systemDf: "https://docs.docker.com/reference/cli/docker/system/df/",
+      systemPrune: "https://docs.docker.com/reference/cli/docker/system/prune/",
+      login: "https://docs.docker.com/reference/cli/docker/login/",
+      scout: "https://docs.docker.com/reference/cli/docker/scout/",
+      manifest: "https://docs.docker.com/reference/cli/docker/manifest/",
+      manifestCreate: "https://docs.docker.com/reference/cli/docker/manifest/create/",
+      manifestPush: "https://docs.docker.com/reference/cli/docker/manifest/push/",
+      context: "https://docs.docker.com/reference/cli/docker/context/",
+      contextCreate: "https://docs.docker.com/reference/cli/docker/context/create/",
+      contextInspect: "https://docs.docker.com/reference/cli/docker/context/inspect/"
+    };
+
+    const commonParams = [
+      ["workDir", "可选；填了会生成 `cd <dir> && ...`，先进入工作目录。"],
+      ["context", "可选；生成 `--context <name>`，指定 Docker context。"],
+      ["extra", "当前命令的补充参数，按原样拼接。"]
+    ];
+
+    const optionHelp = [
+      ["cd <dir>", /\bcd\s+.+\s+&&\s+/, "先切换到工作目录，再执行 Docker 命令。"],
+      ["--context <name>", /\bdocker\s+--context\s+\S+/, "指定 Docker context，例如 default、desktop-linux 或远程 context。"],
+      ["docker search", /\bdocker(?:\s+--context\s+\S+)?\s+search\b/, "在 Docker Hub 搜索镜像。"],
+      ["docker image ls", /\bdocker(?:\s+--context\s+\S+)?\s+image\s+ls\b/, "列出本地镜像。"],
+      ["docker image pull", /\bdocker(?:\s+--context\s+\S+)?\s+image\s+pull\b/, "从 registry 拉取镜像。"],
+      ["docker image tag", /\bdocker(?:\s+--context\s+\S+)?\s+image\s+tag\b/, "给本地镜像添加新的 repository:tag 引用。"],
+      ["docker image push", /\bdocker(?:\s+--context\s+\S+)?\s+image\s+push\b/, "把镜像推送到 registry。"],
+      ["docker image inspect", /\bdocker(?:\s+--context\s+\S+)?\s+image\s+inspect\b/, "查看镜像详细 JSON 元数据。"],
+      ["docker image history", /\bdocker(?:\s+--context\s+\S+)?\s+image\s+history\b/, "查看镜像层历史。"],
+      ["docker image rm", /\bdocker(?:\s+--context\s+\S+)?\s+image\s+rm\b/, "删除本地镜像引用或镜像。"],
+      ["docker image save", /\bdocker(?:\s+--context\s+\S+)?\s+image\s+save\b/, "把镜像保存成 tar 归档。"],
+      ["docker image load", /\bdocker(?:\s+--context\s+\S+)?\s+image\s+load\b/, "从 tar 归档加载镜像。"],
+      ["docker image import", /\bdocker(?:\s+--context\s+\S+)?\s+image\s+import\b/, "从 rootfs tar 或 URL 导入为镜像。"],
+      ["--all-tags", /\bimage\s+(pull|push)\b[^|;&]*\s--all-tags(\s|$)/, "拉取或推送 repository 下所有 tag。"],
+      ["--filter <expr>", /\s--filter\s+\S+/, "按条件过滤输出或清理范围，例如 until=24h、dangling=true、label=xxx。"],
+      ["--limit <n>", /\s--limit\s+\S+/, "限制输出数量。"],
+      ["--digests", /\s--digests(\s|$)/, "镜像列表显示 digest 信息。"],
+      ["--no-trunc", /\s--no-trunc(\s|$)/, "不截断输出，显示完整 ID 或命令。"],
+      ["--format <template>", /\s--format\s+\S+/, "使用 Go template 格式化输出。"],
+      ["--platform <os/arch>", /\s--platform\s+\S+/, "指定镜像或构建目标平台，例如 linux/amd64。"],
+      ["--output, -o <file>", /\s(-o|--output)\s+\S+/, "指定 save、buildx 等命令的输出文件或输出类型。"],
+      ["--input, -i <file>", /\s(-i|--input)\s+\S+/, "指定 load 的输入 tar 文件。"],
+      ["--force", /\s--force(\s|$)/, "强制执行删除、重建或停止类动作。"],
+      ["-f (force/prune)", /\b(?:system prune|image prune|container prune|builder prune|volume prune|image rm|volume rm|network disconnect|rm)\b[^|;&]*\s-f(\s|$)/, "跳过确认或强制执行当前删除/清理动作。"],
+
+      ["docker run", /\bdocker(?:\s+--context\s+\S+)?\s+run\b/, "从镜像创建并启动新容器。"],
+      ["docker create", /\bdocker(?:\s+--context\s+\S+)?\s+create\b/, "只创建容器，不启动。"],
+      ["docker attach", /\bdocker(?:\s+--context\s+\S+)?\s+attach\b/, "附加到运行中容器的标准输入输出。"],
+      ["docker start", /\bdocker(?:\s+--context\s+\S+)?\s+start\b/, "启动已存在的停止容器。"],
+      ["docker stop", /\bdocker(?:\s+--context\s+\S+)?\s+stop\b/, "优雅停止容器。"],
+      ["docker restart", /\bdocker(?:\s+--context\s+\S+)?\s+restart\b/, "重启容器。"],
+      ["docker kill", /\bdocker(?:\s+--context\s+\S+)?\s+kill\b/, "向容器发送 kill 信号，默认 SIGKILL。"],
+      ["docker pause", /\bdocker(?:\s+--context\s+\S+)?\s+pause\b/, "暂停容器内所有进程。"],
+      ["docker unpause", /\bdocker(?:\s+--context\s+\S+)?\s+unpause\b/, "恢复被 pause 的容器。"],
+      ["docker rename", /\bdocker(?:\s+--context\s+\S+)?\s+rename\b/, "重命名容器。"],
+      ["docker update", /\bdocker(?:\s+--context\s+\S+)?\s+update\b/, "更新容器资源限制或重启策略。"],
+      ["docker wait", /\bdocker(?:\s+--context\s+\S+)?\s+wait\b/, "等待容器停止并输出退出码。"],
+      ["docker export", /\bdocker(?:\s+--context\s+\S+)?\s+export\b/, "导出容器文件系统为 tar。"],
+      ["docker rm", /\bdocker(?:\s+--context\s+\S+)?\s+rm\b/, "删除容器。"],
+      ["docker ps", /\bdocker(?:\s+--context\s+\S+)?\s+ps\b/, "列出运行中容器；加 -a 显示所有容器。"],
+      ["--name <name>", /\s--name\s+\S+/, "为容器指定名称。"],
+      ["-d, --detach", /\s(-d|--detach)(\s|$)/, "后台运行容器。"],
+      ["-it", /\s-it(\s|$)/, "交互式终端，等价于 -i -t。"],
+      ["--rm", /\s--rm(\s|$)/, "容器退出后自动删除。"],
+      ["-p <host>:<container>", /\s-p\s+\S+/, "端口映射，把宿主机端口转发到容器端口。"],
+      ["-e <key=value>", /\s-e\s+\S+/, "设置容器环境变量。"],
+      ["-v <host>:<container>", /\s-v\s+\S+:\S+/, "挂载 bind mount 或 named volume。"],
+      ["--mount <spec>", /\s--mount\s+\S+/, "使用结构化 mount 语法挂载 volume/bind/tmpfs。"],
+      ["readonly, ro", /\b(readonly|ro)\b/, "只读挂载，避免工具容器修改宿主机文件。"],
+      ["--network <name>", /\s--network\s+\S+/, "把容器加入指定 Docker network。"],
+      ["--entrypoint <cmd>", /\s--entrypoint\s+\S+/, "覆盖镜像默认 entrypoint。"],
+      ["--signal, -s <signal>", /\s(-s|--signal)\s+\S+/, "指定发送给容器主进程的信号。"],
+      ["--memory <bytes>", /\s--memory\s+\S+/, "设置或更新容器内存限制。"],
+      ["--cpus <n>", /\s--cpus\s+\S+/, "限制容器可用 CPU 数量。"],
+      ["--detach-keys <seq>", /\s--detach-keys\s+\S+/, "覆盖 attach/exec 的分离快捷键。"],
+      ["-v (remove volumes)", /\b(?:docker(?:\s+--context\s+\S+)?\s+rm|compose\s+rm)\b[^|;&]*\s-v(\s|$)/, "删除容器时同时删除关联的匿名 volume。"],
+
+      ["docker logs", /\bdocker(?:\s+--context\s+\S+)?\s+logs\b/, "获取容器日志。"],
+      ["--tail <n>", /\s--tail\s+\S+/, "只输出最后 N 行日志。"],
+      ["-f, --follow", /\blogs\b[^|;&]*\s(-f|--follow)(\s|$)/, "持续跟随日志。"],
+      ["--since <time>", /\s--since\s+\S+/, "只显示指定时间之后的日志。"],
+      ["docker exec", /\bdocker(?:\s+--context\s+\S+)?\s+exec\b/, "在运行中的容器里执行命令。"],
+      ["docker inspect", /\bdocker(?:\s+--context\s+\S+)?\s+inspect\b/, "查看 Docker 对象详细 JSON 信息。"],
+      ["docker cp", /\bdocker(?:\s+--context\s+\S+)?\s+cp\b/, "在容器和宿主机之间复制文件。"],
+      ["docker top", /\bdocker(?:\s+--context\s+\S+)?\s+top\b/, "查看容器内进程。"],
+      ["docker stats", /\bdocker(?:\s+--context\s+\S+)?\s+stats\b/, "查看容器资源使用。"],
+      ["--no-stream", /\s--no-stream(\s|$)/, "只输出一次资源统计，而不是持续刷新。"],
+      ["docker port", /\bdocker(?:\s+--context\s+\S+)?\s+port\b/, "查看容器端口映射。"],
+      ["docker diff", /\bdocker(?:\s+--context\s+\S+)?\s+diff\b/, "查看容器文件系统变更。"],
+      ["docker commit", /\bdocker(?:\s+--context\s+\S+)?\s+commit\b/, "把容器当前文件系统提交成镜像。"],
+      ["docker debug", /\bdocker(?:\s+--context\s+\S+)?\s+debug\b/, "进入容器或镜像的调试 shell，可作为 exec 的替代。"],
+
+      ["docker login", /\bdocker(?:\s+--context\s+\S+)?\s+login\b/, "登录 registry。"],
+      ["docker logout", /\bdocker(?:\s+--context\s+\S+)?\s+logout\b/, "退出 registry 登录。"],
+      ["--username, -u <user>", /\s(-u|--username)\s+\S+/, "指定 registry 用户名。"],
+      ["--password-stdin", /\s--password-stdin(\s|$)/, "从标准输入读取密码，避免明文出现在 shell history。"],
+      ["docker manifest create", /\bdocker(?:\s+--context\s+\S+)?\s+manifest\s+create\b/, "创建本地 manifest list。"],
+      ["docker manifest push", /\bdocker(?:\s+--context\s+\S+)?\s+manifest\s+push\b/, "把 manifest list 推送到 registry。"],
+      ["--purge", /\s--purge(\s|$)/, "manifest push 后删除本地 manifest list。"],
+
+      ["docker buildx build", /\bdocker(?:\s+--context\s+\S+)?\s+buildx\s+build\b/, "使用 BuildKit 构建镜像。"],
+      ["docker buildx bake", /\bdocker(?:\s+--context\s+\S+)?\s+buildx\s+bake\b/, "按 bake/compose 文件定义构建目标。"],
+      ["-t, --tag <image>", /\s(-t|--tag)\s+\S+/, "给构建结果打 tag。"],
+      ["-f, --file <Dockerfile>", /\b(?:buildx build|docker build)\b[^|;&]*(?:\s--file\s+\S+|\s-f\s+(?!-)\S+)/, "指定 Dockerfile 路径。"],
+      ["--build-arg <key=value>", /\s--build-arg\s+\S+/, "传递 Dockerfile ARG 构建参数。"],
+      ["--secret id=...,src=...", /\s--secret\s+\S+/, "把本地 secret 临时挂入 BuildKit 构建，不写入镜像层。"],
+      ["--target <stage>", /\s--target\s+\S+/, "只构建指定多阶段 Dockerfile stage。"],
+      ["--no-cache", /\s--no-cache(\s|$)/, "构建时不使用缓存。"],
+      ["--pull", /\s--pull(\s|$)/, "构建前尝试拉取更新的基础镜像。"],
+      ["--load", /\s--load(\s|$)/, "把构建结果加载进本地 Docker image store。"],
+      ["--push", /\s--push(\s|$)/, "构建完成后推送到 registry。"],
+      ["docker buildx ls", /\bdocker(?:\s+--context\s+\S+)?\s+buildx\s+ls\b/, "列出 builder 实例。"],
+      ["docker buildx create", /\bdocker(?:\s+--context\s+\S+)?\s+buildx\s+create\b/, "创建 builder 实例。"],
+      ["docker buildx inspect", /\bdocker(?:\s+--context\s+\S+)?\s+buildx\s+inspect\b/, "查看 builder 详情。"],
+      ["docker buildx use", /\bdocker(?:\s+--context\s+\S+)?\s+buildx\s+use\b/, "切换当前 builder。"],
+      ["docker buildx du", /\bdocker(?:\s+--context\s+\S+)?\s+buildx\s+du\b/, "查看 builder 构建缓存占用。"],
+      ["docker buildx rm", /\bdocker(?:\s+--context\s+\S+)?\s+buildx\s+rm\b/, "删除 builder。"],
+      ["docker buildx imagetools inspect", /\bdocker(?:\s+--context\s+\S+)?\s+buildx\s+imagetools\s+inspect\b/, "检查远端多架构镜像 manifest。"],
+      ["--bootstrap", /\s--bootstrap(\s|$)/, "启动 builder 并刷新 inspect 输出。"],
+
+      ["docker compose", /\bdocker(?:\s+--context\s+\S+)?\s+compose\b/, "Docker Compose CLI。"],
+      ["-f <file>", /\bcompose\b[^|;&]*\s-f\s+(?!-)\S+/, "指定 compose 文件。"],
+      ["-p <project>", /\s-p\s+\S+/, "指定 compose project name。"],
+      ["compose up", /\bcompose\s+up\b/, "创建并启动 compose 服务。"],
+      ["compose down", /\bcompose\s+down\b/, "停止并删除 compose 创建的容器和网络。"],
+      ["compose logs", /\bcompose\s+logs\b/, "查看 compose 服务日志。"],
+      ["compose exec", /\bcompose\s+exec\b/, "在 compose 服务容器中执行命令。"],
+      ["compose run", /\bcompose\s+run\b/, "为服务启动一次性命令容器。"],
+      ["compose build", /\bcompose\s+build\b/, "构建 compose 服务镜像。"],
+      ["compose pull", /\bcompose\s+pull\b/, "拉取 compose 服务镜像。"],
+      ["compose push", /\bcompose\s+push\b/, "推送 compose 服务镜像。"],
+      ["compose ls", /\bcompose\s+ls\b/, "列出 Compose 项目。"],
+      ["compose images", /\bcompose\s+images\b/, "列出 Compose 服务使用的镜像。"],
+      ["compose top", /\bcompose\s+top\b/, "查看 Compose 服务进程。"],
+      ["compose stats", /\bcompose\s+stats\b/, "查看 Compose 服务资源使用。"],
+      ["compose events", /\bcompose\s+events\b/, "查看 Compose 项目事件流。"],
+      ["compose port", /\bcompose\s+port\b/, "查看 Compose 服务端口映射。"],
+      ["compose cp", /\bcompose\s+cp\b/, "在 Compose 服务容器和宿主机之间复制文件。"],
+      ["compose restart", /\bcompose\s+restart\b/, "重启 Compose 服务。"],
+      ["compose stop", /\bcompose\s+stop\b/, "停止 Compose 服务。"],
+      ["compose start", /\bcompose\s+start\b/, "启动已创建的 Compose 服务。"],
+      ["compose rm", /\bcompose\s+rm\b/, "删除已停止的 Compose 服务容器。"],
+      ["compose watch", /\bcompose\s+watch\b/, "监听文件变化并按 compose watch 规则同步或重建。"],
+      ["compose wait", /\bcompose\s+wait\b/, "阻塞直到 Compose 服务停止。"],
+      ["compose kill", /\bcompose\s+kill\b/, "向 Compose 服务容器发送信号。"],
+      ["compose pause", /\bcompose\s+pause\b/, "暂停 Compose 服务容器。"],
+      ["compose unpause", /\bcompose\s+unpause\b/, "恢复 Compose 服务容器。"],
+      ["compose create", /\bcompose\s+create\b/, "创建 Compose 服务容器但不启动。"],
+      ["--build", /\s--build(\s|$)/, "compose up 前构建镜像。"],
+      ["--no-up", /\s--no-up(\s|$)/, "compose watch 时不自动启动服务。"],
+      ["--remove-orphans", /\s--remove-orphans(\s|$)/, "删除 compose 文件中已不存在的服务容器。"],
+      ["--volumes", /\s--volumes(\s|$)/, "down 或 prune 时包含 volume。"],
+      ["-T", /\s-T(\s|$)/, "compose exec 禁用伪终端分配，适合脚本或非交互执行。"],
+      ["--json", /\s--json(\s|$)/, "以 JSON 格式输出，便于脚本解析。"],
+
+      ["docker network ls", /\bdocker(?:\s+--context\s+\S+)?\s+network\s+ls\b/, "列出 Docker network。"],
+      ["docker network create", /\bdocker(?:\s+--context\s+\S+)?\s+network\s+create\b/, "创建 Docker network。"],
+      ["docker network inspect", /\bdocker(?:\s+--context\s+\S+)?\s+network\s+inspect\b/, "查看 network 详情和连接容器。"],
+      ["docker network connect", /\bdocker(?:\s+--context\s+\S+)?\s+network\s+connect\b/, "把容器连接到 network。"],
+      ["docker network disconnect", /\bdocker(?:\s+--context\s+\S+)?\s+network\s+disconnect\b/, "把容器从 network 断开。"],
+      ["docker network rm", /\bdocker(?:\s+--context\s+\S+)?\s+network\s+rm\b/, "删除 Docker network。"],
+      ["docker network prune", /\bdocker(?:\s+--context\s+\S+)?\s+network\s+prune\b/, "删除未使用的 Docker network。"],
+      ["--driver <driver>", /\s--driver\s+\S+/, "指定 network 或 volume driver。"],
+      ["docker volume ls", /\bdocker(?:\s+--context\s+\S+)?\s+volume\s+ls\b/, "列出 Docker volume。"],
+      ["docker volume create", /\bdocker(?:\s+--context\s+\S+)?\s+volume\s+create\b/, "创建 Docker volume。"],
+      ["docker volume inspect", /\bdocker(?:\s+--context\s+\S+)?\s+volume\s+inspect\b/, "查看 volume 详情。"],
+      ["docker volume rm", /\bdocker(?:\s+--context\s+\S+)?\s+volume\s+rm\b/, "删除 Docker volume。"],
+      ["docker volume prune", /\bdocker(?:\s+--context\s+\S+)?\s+volume\s+prune\b/, "删除未使用的 Docker volume。"],
+
+      ["docker system df", /\bdocker(?:\s+--context\s+\S+)?\s+system\s+df\b/, "查看 Docker 磁盘占用。"],
+      ["docker system prune", /\bdocker(?:\s+--context\s+\S+)?\s+system\s+prune\b/, "清理未使用的容器、网络、镜像和构建缓存。"],
+      ["docker image prune", /\bdocker(?:\s+--context\s+\S+)?\s+image\s+prune\b/, "清理悬空或未使用镜像。"],
+      ["docker container prune", /\bdocker(?:\s+--context\s+\S+)?\s+container\s+prune\b/, "删除停止的容器。"],
+      ["docker builder prune", /\bdocker(?:\s+--context\s+\S+)?\s+builder\s+prune\b/, "清理构建缓存。"],
+      ["-a, --all", /\s(--all|-a)(\s|$)/, "作用于全部匹配对象；清理命令中通常表示包含更多未使用资源。"],
+      ["docker info", /\bdocker(?:\s+--context\s+\S+)?\s+info\b/, "查看 Docker daemon 系统信息。"],
+      ["docker version", /\bdocker(?:\s+--context\s+\S+)?\s+version\b/, "查看 client/server 版本。"],
+      ["docker context ls", /\bdocker(?:\s+--context\s+\S+)?\s+context\s+ls\b/, "列出 Docker contexts。"],
+      ["docker context show", /\bdocker(?:\s+--context\s+\S+)?\s+context\s+show\b/, "显示当前默认 Docker context。"],
+      ["docker context use", /\bdocker(?:\s+--context\s+\S+)?\s+context\s+use\b/, "切换当前 Docker context。"],
+      ["docker context inspect", /\bdocker(?:\s+--context\s+\S+)?\s+context\s+inspect\b/, "查看 Docker context 详情。"],
+      ["docker context create", /\bdocker(?:\s+--context\s+\S+)?\s+context\s+create\b/, "创建新的 Docker context。"],
+      ["--docker <endpoint>", /\s--docker\s+\S+/, "为 context 配置 Docker endpoint，例如 host=ssh://user@host。"],
+      ["docker events", /\bdocker(?:\s+--context\s+\S+)?\s+events\b/, "实时查看 daemon 事件流。"],
+
+      ["docker scout quickview", /\bdocker(?:\s+--context\s+\S+)?\s+scout\s+quickview\b/, "快速查看镜像漏洞概览。"],
+      ["docker scout cves", /\bdocker(?:\s+--context\s+\S+)?\s+scout\s+cves\b/, "列出镜像 CVE。"],
+      ["docker scout recommendations", /\bdocker(?:\s+--context\s+\S+)?\s+scout\s+recommendations\b/, "查看基础镜像升级建议。"],
+      ["docker scout sbom", /\bdocker(?:\s+--context\s+\S+)?\s+scout\s+sbom\b/, "生成或查看镜像 SBOM。"],
+      ["docker manifest inspect", /\bdocker(?:\s+--context\s+\S+)?\s+manifest\s+inspect\b/, "查看远端镜像 manifest 或 manifest list。"]
+    ];
+
+    const commands = [
+      cmd("image-search", "images", "Search Image", "搜索 Docker Hub 镜像。", docs.search,
+        s => join([docker(s), "search", s.filter ? `--filter ${shellWord(s.filter)}` : "", s.noTrunc ? "--no-trunc" : "", s.extra || "--limit 25", val(s.image, "<term>")]),
+        "在 Docker Hub 搜索镜像，适合查找工具镜像或确认官方镜像名称。",
+        [["image", "这里作为搜索关键词。"], ["filter / format", "可填 is-official=true、stars=100。"], ["no-trunc", "生成 --no-trunc。"], ["extra", "默认 --limit 25。"]],
+        ["docker search 只搜索 Docker Hub，不代表私有 registry 中存在该镜像。"]),
+      cmd("image-ls", "images", "Image List", "查看本地镜像。", docs.imageLs,
+        s => join([docker(s), "image ls", s.all ? "-a" : "", s.verbose ? "--digests" : "", s.noTrunc ? "--no-trunc" : "", s.filter ? `--filter ${shellWord(s.filter)}` : "", s.extra]),
+        "列出本地 Docker image store 中的镜像，适合确认镜像是否已拉取、tag 是否正确、镜像大小和 ID。",
+        [["filter / format", "可填 dangling=true、reference=nginx 等 filter。"], ["all", "显示中间层镜像。"], ["verbose", "生成 --digests。"], ["no-trunc", "显示完整 ID。"]],
+        ["查看发布结果时建议打开 digests。"]),
+      cmd("image-pull", "images", "Pull Image", "拉取镜像。", docs.pull,
+        s => join([docker(s), "image pull", s.platform ? `--platform ${shellWord(s.platform)}` : "", s.all ? "--all-tags" : "", val(s.image, "<image:tag>")]),
+        "从 Docker Hub 或私有 registry 拉取镜像。image 可填 nginx:latest、busybox:latest 或 registry.example.com/team/app:v1。",
+        [["image", "镜像引用。"], ["platform", "可选平台。"], ["all", "拉取仓库所有 tag。"]],
+        ["私有 registry 需要先 docker login。"]),
+      cmd("image-inspect", "images", "Image Inspect", "查看镜像元数据。", docs.imageInspect,
+        s => join([docker(s), "image inspect", s.filter ? `--format ${shellWord(s.filter)}` : "", val(s.image, "<image:tag>")]),
+        "输出镜像 JSON 元数据，可查看 entrypoint、cmd、env、labels、rootfs、architecture 等信息。",
+        [["image", "镜像引用。"], ["filter / format", "可填 Go template。"]],
+        ["输出可能较长，常配合 --format 精简字段。"]),
+      cmd("image-history", "images", "Image History", "查看镜像层历史。", docs.history,
+        s => join([docker(s), "image history", s.noTrunc ? "--no-trunc" : "", val(s.image, "<image:tag>")]),
+        "查看镜像每一层的创建命令和大小，适合定位镜像为什么很大。",
+        [["image", "镜像引用。"], ["no-trunc", "显示完整命令。"]],
+        ["敏感信息不应通过 Dockerfile RUN 写入镜像层。"]),
+      cmd("image-rm", "images", "Remove Image", "删除本地镜像。", docs.rmImage,
+        s => join([docker(s), "image rm", s.force ? "--force" : "", val(s.image, "<image:tag-or-id>")]),
+        "删除本地镜像引用。若镜像被容器使用或有多个 tag，可能需要先删除容器或使用 force。",
+        [["image", "镜像或 ID。"], ["force", "强制删除。"]],
+        ["删除前建议先 docker ps -a 确认是否有容器依赖。"]),
+      cmd("image-save", "images", "Save Image", "导出镜像 tar。", docs.save,
+        s => join([docker(s), "image save", "-o", val(s.outputFile, "./image.tar"), val(s.image, "<image:tag>")]),
+        "把镜像保存为 tar 文件，便于离线传输。",
+        [["image", "镜像引用。"], ["output file", "输出 tar 文件。"]],
+        ["tar 文件可能很大，确认磁盘空间。"]),
+      cmd("image-load", "images", "Load Image", "导入镜像 tar。", docs.load,
+        s => join([docker(s), "image load", "-i", val(s.outputFile, "./image.tar")]),
+        "从 docker save 生成的 tar 文件加载镜像到本地。",
+        [["output file", "这里复用为输入 tar 文件。"]],
+        ["加载后用 docker image ls 确认 tag。"]),
+      cmd("image-import", "images", "Import Rootfs", "从 rootfs 导入镜像。", docs.imageImport,
+        s => join([docker(s), "image import", s.platform ? `--platform ${shellWord(s.platform)}` : "", val(s.outputFile, "./rootfs.tar"), val(s.targetImage || imageRef(s), "<image:tag>")]),
+        "从容器 rootfs tar、URL 或标准输入创建镜像。和 docker load 不同，import 不保留原镜像历史和元数据。",
+        [["output file", "rootfs tar 文件、URL 或 -。"], ["target image", "导入后的镜像 tag。"], ["platform", "可选平台。"]],
+        ["如果 tar 来自 docker save，请用 Load Image；import 适合 rootfs tar。"]),
+      cmd("tool-netshoot", "images", "Run Netshoot", "拉起网络工具镜像。", docs.run,
+        s => join([docker(s), "run --rm -it", networkArg(s), val(s.image, "nicolaka/netshoot:latest"), val(s.command, "sh")]),
+        "使用 nicolaka/netshoot 临时容器进入指定 Docker network，做 curl、dig、tcpdump、ip route 等网络排查。",
+        [["image", "默认 nicolaka/netshoot:latest。"], ["network", "加入的 Docker network。"], ["container command", "容器内命令。"]],
+        ["需要目标服务和工具容器在同一个 network。"]),
+
+      cmd("run-basic", "containers", "Run Container", "启动容器。", docs.run,
+        s => join([docker(s), "run", s.detach ? "-d" : "", s.interactive ? "-it" : "", s.remove ? "--rm" : "", nameArg(s), portArg(s), envArg(s), volumeArg(s), networkArg(s), val(s.image, "<image:tag>"), s.command]),
+        "从镜像创建并启动容器，可配置名称、端口、环境变量、挂载和网络。",
+        [["image", "镜像引用。"], ["container", "容器名。"], ["host/container port", "生成 -p。"], ["env", "生成 -e。"], ["mount", "生成 -v。"]],
+        ["需要长期运行时建议打开 detach；临时调试建议打开 rm 和 interactive。"]),
+      cmd("run-shell", "containers", "Run Shell", "临时 shell 调试。", docs.run,
+        s => join([docker(s), "run --rm -it", nameArg(s), volumeArg(s), networkArg(s), "--entrypoint", shellWord(shellName(s)), val(s.image, "<image:tag>")]),
+        "覆盖 entrypoint 进入镜像 shell，适合检查镜像文件、环境变量、工具是否存在。",
+        [["image", "镜像引用。"], ["container command", "可填 sh 或 bash。"], ["mount", "挂载当前项目。"]],
+        ["alpine/busybox 常用 sh，debian/ubuntu 可用 bash。"]),
+      cmd("run-bind-readonly", "containers", "Run Bind RO", "只读挂载本地目录调试。", docs.run,
+        s => join([docker(s), "run --rm -it", networkArg(s), bindMountReadonlyArg(s), val(s.image, "busybox:latest"), val(s.command, "sh")]),
+        "使用 --mount type=bind 只读挂载本地目录到容器，适合拉工具镜像检查项目文件但避免误写宿主机。",
+        [["image", "工具镜像。"], ["mount / bind", "格式可填 /host/path:/container/path；为空默认 $(pwd):/work。"], ["container command", "容器内命令。"]],
+        ["如果确实需要写入，请用普通 Run Container 模板显式配置 -v。"]),
+      cmd("run-port", "containers", "Run With Port", "带端口映射启动。", docs.run,
+        s => join([docker(s), "run", s.detach ? "-d" : "", s.remove ? "--rm" : "", nameArg(s), portArg(s), envArg(s), val(s.image, "<image:tag>")]),
+        "启动服务类容器并映射宿主机端口。",
+        [["host port", "宿主机端口。"], ["container port", "容器端口。"], ["detach", "后台运行。"]],
+        ["如果端口冲突，用 docker ps 或 lsof 查看占用。"]),
+      cmd("create-container", "containers", "Create Container", "只创建不启动。", docs.create,
+        s => join([docker(s), "create", nameArg(s), portArg(s), envArg(s), volumeArg(s), networkArg(s), val(s.image, "<image:tag>"), s.command]),
+        "创建容器但不启动，适合先准备容器配置，再用 start 启动或 inspect 检查配置。",
+        [["image", "镜像引用。"], ["container", "容器名。"], ["host/container port", "生成 -p。"], ["env", "生成 -e。"], ["mount", "生成 -v。"]],
+        ["create 不会运行进程；启动需要再执行 docker start。"]),
+      cmd("ps", "containers", "PS", "列出容器。", docs.ps,
+        s => join([docker(s), "ps", s.all ? "-a" : "", s.filter ? `--filter ${shellWord(s.filter)}` : "", s.extra]),
+        "列出容器状态，常用于查看容器是否退出、端口映射、镜像和名称。",
+        [["all", "显示所有容器。"], ["filter / format", "可填 status=exited、name=app。"]],
+        ["退出的容器要加 -a 才能看到。"]),
+      cmd("start", "containers", "Start", "启动已存在容器。", docs.index,
+        s => join([docker(s), "start", s.interactive ? "-ai" : "", val(s.container, "<container>")]),
+        "启动已经创建或停止的容器，-ai 可附加交互输入输出。",
+        [["container", "容器名或 ID。"], ["interactive", "生成 -ai。"]],
+        ["如果只是重新启动服务，restart 更直接。"]),
+      cmd("stop", "containers", "Stop", "停止容器。", docs.index,
+        s => join([docker(s), "stop", s.extra, val(s.container, "<container>")]),
+        "向容器发送停止信号并等待退出。",
+        [["container", "容器名或 ID。"], ["extra", "可填 -t 30 指定等待秒数。"]],
+        ["如果进程不响应，再考虑 kill。"]),
+      cmd("restart", "containers", "Restart", "重启容器。", docs.index,
+        s => join([docker(s), "restart", s.extra, val(s.container, "<container>")]),
+        "重启容器，适合临时恢复本地服务。",
+        [["container", "容器名或 ID。"]],
+        ["重启不会重新创建容器，镜像更新后需要 rm/run 或 compose up --force-recreate。"]),
+      cmd("kill-container", "containers", "Kill", "强制停止容器。", docs.kill,
+        s => join([docker(s), "kill", s.extra || "", val(s.container, "<container>")]),
+        "向容器主进程发送信号，默认是 SIGKILL。适合 stop 超时或进程无响应时使用。",
+        [["container", "容器名或 ID。"], ["extra", "可填 --signal SIGTERM 或 -s HUP。"]],
+        ["优先使用 stop；kill 会更直接地中断进程。"]),
+      cmd("pause-container", "containers", "Pause", "暂停容器进程。", docs.pause,
+        s => join([docker(s), "pause", val(s.container, "<container>")]),
+        "暂停容器内所有进程，容器仍存在但进程被冻结。",
+        [["container", "容器名或 ID。"]],
+        ["暂停服务会导致请求无响应，恢复用 Unpause。"]),
+      cmd("unpause-container", "containers", "Unpause", "恢复暂停容器。", docs.unpause,
+        s => join([docker(s), "unpause", val(s.container, "<container>")]),
+        "恢复被 docker pause 暂停的容器。",
+        [["container", "容器名或 ID。"]],
+        ["如果容器实际已退出，unpause 不会重新启动它。"]),
+      cmd("rename-container", "containers", "Rename", "重命名容器。", docs.rename,
+        s => join([docker(s), "rename", val(s.container, "<container>"), val(s.targetName, "<new-container-name>")]),
+        "修改容器名称，常用于让临时调试容器变成更明确的名字。",
+        [["container", "原容器名或 ID。"], ["target name", "新的容器名。"]],
+        ["改名后旧名称不能再用于后续命令。"]),
+      cmd("update-container", "containers", "Update Limits", "更新容器资源限制。", docs.update,
+        s => join([docker(s), "update", s.extra || "--memory 512m --cpus 1", val(s.container, "<container>")]),
+        "更新容器 CPU、内存、重启策略等运行时限制，适合临时限制本地调试容器资源。",
+        [["container", "容器名或 ID。"], ["extra", "默认 --memory 512m --cpus 1，可改为 --restart unless-stopped 等。"]],
+        ["资源限制变更会影响容器运行表现，生产环境先确认容量。"]),
+      cmd("rm-container", "containers", "Remove Container", "删除容器。", docs.index,
+        s => join([docker(s), "rm", s.force ? "-f" : "", s.remove ? "-v" : "", val(s.container, "<container>")]),
+        "删除停止的容器；force 打开时可删除运行中容器；rm/cleanup 打开时同时删除匿名卷。",
+        [["container", "容器名或 ID。"], ["force", "生成 -f。"], ["rm/cleanup", "生成 -v。"]],
+        ["删除容器前确认是否还需要日志或文件。"]),
+
+      cmd("logs", "debug", "Logs", "查看容器日志。", docs.logs,
+        s => join([docker(s), "logs", s.follow ? "-f" : "", "--tail", tailValue(s), s.extra, val(s.container, "<container>")]),
+        "查看容器 stdout/stderr 日志，可限制尾部行数并持续跟随。",
+        [["container", "容器名或 ID。"], ["follow", "生成 -f。"], ["extra", "可填 --since 1h。"]],
+        ["日志是否完整取决于容器 logging driver。"]),
+      cmd("exec", "debug", "Exec", "进入运行中容器。", docs.exec,
+        s => join([docker(s), "exec", s.interactive ? "-it" : "", val(s.container, "<container>"), val(s.command, "sh")]),
+        "在正在运行的容器里执行命令，常用于进入 shell 或运行诊断命令。",
+        [["container", "容器名或 ID。"], ["container command", "容器内命令。"], ["interactive", "生成 -it。"]],
+        ["exec 只能用于运行中的容器。"]),
+      cmd("docker-debug", "debug", "Docker Debug", "进入容器或镜像调试 shell。", docs.debug,
+        s => join([docker(s), "debug", val(s.container || s.image, "<container-or-image>")]),
+        "Docker 官方提供的调试入口，可对容器或镜像启动调试 shell，适合目标镜像内缺少 shell、ps、curl 等工具时使用。",
+        [["container/image", "容器名、容器 ID 或镜像引用。"]],
+        ["需要 Docker debug 功能在当前 Docker 版本/环境可用。"]),
+      cmd("attach", "debug", "Attach", "附加到容器终端。", docs.attach,
+        s => join([docker(s), "attach", s.extra, val(s.container, "<container>")]),
+        "附加到运行中容器的标准输入、输出和错误流，适合观察前台进程交互输出。",
+        [["container", "运行中的容器名或 ID。"], ["extra", "可填 --detach-keys ctrl-x。"]],
+        ["attach 到主进程时不要误发退出信号；分离快捷键取决于配置。"]),
+      cmd("inspect-container", "debug", "Inspect Container", "查看容器元数据。", docs.inspect,
+        s => join([docker(s), "inspect", s.filter ? `--format ${shellWord(s.filter)}` : "", val(s.container, "<container>")]),
+        "查看容器网络、挂载、环境变量、状态、健康检查等详细信息。",
+        [["container", "容器名或 ID。"], ["filter / format", "可填 Go template。"]],
+        ["输出可能包含环境变量和敏感信息。"]),
+      cmd("container-stats", "debug", "Stats", "查看资源使用。", docs.stats,
+        s => join([docker(s), "stats", s.all ? "--all" : "", s.extra || "--no-stream", val(s.container, "")]),
+        "查看容器 CPU、内存、网络、IO 使用情况。",
+        [["container", "可选容器名。"], ["all", "显示所有容器。"], ["extra", "默认 --no-stream；可清空改为实时流。"]],
+        ["生产环境长时间采样注意终端输出量。"]),
+      cmd("container-top", "debug", "Top", "查看容器进程。", docs.index,
+        s => join([docker(s), "top", val(s.container, "<container>")]),
+        "查看容器内运行进程。",
+        [["container", "容器名或 ID。"]],
+        ["如果需要更详细进程信息，可 exec 进入容器运行 ps。"]),
+      cmd("container-port", "debug", "Port", "查看端口映射。", docs.index,
+        s => join([docker(s), "port", val(s.container, "<container>"), s.containerPort || ""]),
+        "查看容器端口映射到宿主机的端口。",
+        [["container", "容器名或 ID。"], ["container port", "可选容器端口。"]],
+        ["服务访问失败时先确认映射是否存在。"]),
+      cmd("container-cp", "debug", "Copy File", "容器和宿主机复制文件。", docs.cp,
+        s => join([docker(s), "cp", val(s.container, "<container>") + ":" + val(s.outputFile, "/path/in/container"), val(s.mount, "./")]),
+        "从容器复制文件到本地，或反向复制。默认模板是从容器复制到本地目录。",
+        [["container", "容器名或 ID。"], ["output file", "容器内路径。"], ["mount", "本地目标路径。"]],
+        ["复制大文件前确认磁盘空间。"]),
+      cmd("container-diff", "debug", "Diff", "查看容器文件变更。", docs.index,
+        s => join([docker(s), "diff", val(s.container, "<container>")]),
+        "查看容器文件系统相对镜像的新增、修改和删除。",
+        [["container", "容器名或 ID。"]],
+        ["适合判断运行时是否写入了意外文件。"]),
+      cmd("container-commit", "debug", "Commit", "容器提交为镜像。", docs.commit,
+        s => join([docker(s), "commit", val(s.container, "<container>"), val(s.targetImage || imageRef(s), "<target-image:tag>")]),
+        "把容器当前文件系统提交成新的镜像，适合临时保存调试结果。",
+        [["container", "容器名或 ID。"], ["target image", "目标镜像 tag。"]],
+        ["commit 不包含 mounted volume 中的数据，不建议作为正式构建流程。"]),
+      cmd("container-export", "debug", "Export FS", "导出容器文件系统。", docs.exportContainer,
+        s => join([docker(s), "export", "-o", val(s.outputFile, "./container-rootfs.tar"), val(s.container, "<container>")]),
+        "把容器文件系统导出为 rootfs tar，适合离线分析容器内文件。",
+        [["container", "容器名或 ID。"], ["output file", "输出 rootfs tar 文件。"]],
+        ["export 不包含 volume 数据；如果要保留镜像历史请用 docker image save。"]),
+      cmd("container-wait", "debug", "Wait Exit", "等待容器退出。", docs.wait,
+        s => join([docker(s), "wait", val(s.container, "<container>")]),
+        "阻塞等待容器停止并输出退出码，适合脚本中等待一次性任务或 job 容器结束。",
+        [["container", "容器名或 ID。"]],
+        ["如果容器长期不退出，该命令会一直等待。"]),
+
+      cmd("login", "registry", "Login", "登录 registry。", docs.login,
+        s => join([docker(s), "login", s.registry ? shellWord(s.registry) : "", s.extra || "--username <user> --password-stdin"]),
+        "登录 Docker Hub 或私有 registry。推荐用 --password-stdin，避免密码进入 shell history。",
+        [["registry", "registry 地址。"], ["extra", "默认 --username <user> --password-stdin。"]],
+        ["不要把真实密码直接写进命令。"]),
+      cmd("logout", "registry", "Logout", "退出 registry。", docs.login,
+        s => join([docker(s), "logout", s.registry ? shellWord(s.registry) : ""]),
+        "删除本地 registry 登录凭据。",
+        [["registry", "可选 registry 地址。"]],
+        ["共享机器上建议使用后 logout。"]),
+      cmd("tag", "registry", "Tag Image", "打 tag。", docs.tag,
+        s => join([docker(s), "image tag", val(s.image, "<source-image:tag>"), val(s.targetImage || imageRef(s), "<registry/repo:tag>")]),
+        "给本地镜像添加新的 tag，常用于推送前改成私有 registry 地址。",
+        [["image", "源镜像。"], ["target image", "目标镜像；为空时由 registry/repository/tag 拼接。"]],
+        ["tag 只是新增引用，不会复制镜像层。"]),
+      cmd("push", "registry", "Push Image", "推送镜像。", docs.push,
+        s => join([docker(s), "image push", s.all ? "--all-tags" : "", val(s.targetImage || imageRef(s), "<registry/repo:tag>")]),
+        "把镜像推送到 Docker Hub 或私有 registry。",
+        [["target image", "目标镜像。"], ["all", "推送 repository 下所有 tag。"]],
+        ["大镜像推送前确认网络和 registry 配额。"]),
+      cmd("pull-private", "registry", "Pull Private", "拉取私有镜像。", docs.pull,
+        s => join([docker(s), "image pull", s.platform ? `--platform ${shellWord(s.platform)}` : "", val(s.targetImage || imageRef(s), "<registry/repo:tag>")]),
+        "从私有 registry 拉取镜像。",
+        [["target image", "完整私有镜像引用。"], ["platform", "可选平台。"]],
+        ["认证失败先 docker login，再检查 namespace/repository 权限。"]),
+      cmd("manifest-inspect", "registry", "Manifest Inspect", "查看远端 manifest。", docs.manifest,
+        s => join([docker(s), "manifest inspect", s.verbose ? "--verbose" : "", val(s.targetImage || s.image, "<image:tag>")]),
+        "查看远端镜像 manifest 或 manifest list，常用于确认多架构镜像是否包含目标平台。",
+        [["image/target image", "镜像引用。"], ["verbose", "显示详细 manifest 信息。"]],
+        ["某些 registry 可能需要登录才能 inspect 私有镜像。"]),
+      cmd("manifest-create", "registry", "Manifest Create", "创建 manifest list。", docs.manifestCreate,
+        s => join([docker(s), "manifest create", val(s.targetImage || imageRef(s), "<target-manifest:tag>"), val(s.image, "<source-image:tag>"), s.extra]),
+        "把一个或多个平台镜像组合成本地 manifest list，后续可 annotate 并 push。",
+        [["target image", "目标 manifest 引用。"], ["image", "源镜像引用。"], ["extra", "可继续追加其他平台镜像。"]],
+        ["manifest create 只创建本地 manifest list；发布需要再执行 manifest push。"]),
+      cmd("manifest-push", "registry", "Manifest Push", "推送 manifest list。", docs.manifestPush,
+        s => join([docker(s), "manifest push", s.force ? "--purge" : "", val(s.targetImage || imageRef(s), "<manifest:tag>")]),
+        "把本地 manifest list 推送到 registry。force 打开时使用 --purge，推送后移除本地 manifest list。",
+        [["target image", "manifest 引用。"], ["force", "生成 --purge。"]],
+        ["这是远程发布动作，推送前确认 tag 和平台镜像都正确。"]),
+      cmd("imagetools-inspect", "registry", "Imagetools Inspect", "查看多架构镜像。", docs.buildx,
+        s => join([docker(s), "buildx imagetools inspect", val(s.targetImage || s.image, "<image:tag>")]),
+        "用 buildx imagetools 查看 image index/manifest list。",
+        [["image/target image", "镜像引用。"]],
+        ["适合检查 buildx --platform --push 后的远端结果。"]),
+
+      cmd("buildx-build", "build", "Buildx Build", "构建镜像。", docs.buildx,
+        s => join([docker(s), "buildx build", s.noCache ? "--no-cache" : "", s.platform ? `--platform ${shellWord(s.platform)}` : "", tagArg(s), dockerfileArg(s), buildArg(s), targetStageArg(s), s.push ? "--push" : "--load", s.extra, val(s.buildContext, ".")]),
+        "使用 BuildKit 构建 Docker 镜像。默认 --load 导入本地；push 打开时生成 --push。",
+        [["target image", "构建 tag。"], ["Dockerfile", "Dockerfile 路径。"], ["build context", "构建上下文。"], ["platform", "多架构平台。"]],
+        ["多架构构建通常需要 --push；--load 只适合单平台本地加载。"]),
+      cmd("buildx-push", "build", "Build And Push", "构建并推送。", docs.buildx,
+        s => join([docker(s), "buildx build", "--push", s.noCache ? "--no-cache" : "", s.platform ? `--platform ${shellWord(s.platform)}` : "", tagArg(s), dockerfileArg(s), buildArg(s), targetStageArg(s), s.extra, val(s.buildContext, ".")]),
+        "构建完成后直接推送到 registry，适合 CI 或多架构镜像。",
+        [["target image", "目标镜像。"], ["platform", "可填 linux/amd64,linux/arm64。"], ["no-cache", "禁用缓存。"]],
+        ["推送前确认已经 docker login。"]),
+      cmd("build-no-cache", "build", "Build No Cache", "不使用缓存构建。", docs.buildx,
+        s => join([docker(s), "buildx build --no-cache", tagArg(s), dockerfileArg(s), buildArg(s), s.extra, val(s.buildContext, ".")]),
+        "强制不使用构建缓存，适合验证基础镜像和依赖是否最新。",
+        [["target image", "构建 tag。"], ["build arg", "ARG 参数。"]],
+        ["会明显变慢，也会增加 registry/网络压力。"]),
+      cmd("build-target", "build", "Build Target Stage", "构建指定 stage。", docs.buildx,
+        s => join([docker(s), "buildx build", tagArg(s), dockerfileArg(s), targetStageArg(s), s.extra, val(s.buildContext, ".")]),
+        "多阶段 Dockerfile 中只构建指定 target stage，适合调试 builder stage。",
+        [["target stage", "Dockerfile stage 名称。"]],
+        ["确认 Dockerfile 中 AS 名称拼写正确。"]),
+      cmd("buildx-secret", "build", "Build With Secret", "使用 BuildKit secret 构建。", docs.buildx,
+        s => join([docker(s), "buildx build", tagArg(s), dockerfileArg(s), `--secret ${shellWord(val(s.extra, "id=mysecret,src=./secret.txt"))}`, val(s.buildContext, ".")]),
+        "通过 BuildKit --secret 把本地 secret 临时挂给 RUN --mount=type=secret 使用，避免用 build-arg 把密钥写入镜像层。",
+        [["target image", "构建 tag。"], ["extra", "secret 规格，例如 id=npmrc,src=$HOME/.npmrc。"], ["build context", "构建上下文。"]],
+        ["不要用 --build-arg 传密钥；secret 文件权限和路径需要确认。"]),
+      cmd("buildx-ls", "build", "Buildx LS", "列出 builder。", docs.buildxLs,
+        s => join([docker(s), "buildx ls"]),
+        "列出 buildx builder 实例、driver、节点和平台支持。",
+        [],
+        ["多架构构建失败时先看 builder 支持的平台。"]),
+      cmd("buildx-create", "build", "Buildx Create", "创建 builder。", docs.buildxCreate,
+        s => join([docker(s), "buildx create --name", val(s.container, "builder"), s.extra || "--use"]),
+        "创建并可切换到新的 buildx builder。",
+        [["container", "这里复用为 builder 名称。"], ["extra", "默认 --use。"]],
+        ["创建 docker-container driver builder 可能会启动辅助容器。"]),
+      cmd("buildx-inspect", "build", "Buildx Inspect", "查看 builder 详情。", docs.buildxInspect,
+        s => join([docker(s), "buildx inspect", s.container || "", s.verbose ? "--bootstrap" : ""]),
+        "查看当前或指定 buildx builder 的 driver、节点、平台能力。verbose 打开时生成 --bootstrap，确保 builder 启动并刷新信息。",
+        [["container", "这里复用为 builder 名称；为空查看当前 builder。"], ["verbose", "生成 --bootstrap。"]],
+        ["多架构构建失败时优先检查 builder 支持的平台。"]),
+      cmd("buildx-use", "build", "Buildx Use", "切换 builder。", docs.buildxUse,
+        s => join([docker(s), "buildx use", val(s.container, "<builder>")]),
+        "切换当前默认 buildx builder。",
+        [["container", "这里复用为 builder 名称。"]],
+        ["这是本地构建上下文状态变更，会影响后续 buildx build。"]),
+      cmd("buildx-du", "build", "Buildx DU", "查看构建缓存占用。", docs.buildxDu,
+        s => join([docker(s), "buildx du", s.verbose ? "--verbose" : "", s.extra]),
+        "查看 buildx builder 的构建缓存磁盘占用，适合清理前判断缓存大小。",
+        [["verbose", "显示更详细缓存记录。"], ["extra", "可填 --builder <name>。"]],
+        ["清理缓存前先用 du 看具体占用。"]),
+      cmd("buildx-rm", "build", "Buildx RM", "删除 builder。", docs.buildxRm,
+        s => join([docker(s), "buildx rm", s.force ? "--force" : "", val(s.container, "<builder>")]),
+        "删除 buildx builder 实例。",
+        [["container", "这里复用为 builder 名称。"], ["force", "强制删除。"]],
+        ["删除 builder 会影响后续构建；先确认不是当前正在使用的 builder。"]),
+      cmd("buildx-bake", "build", "Buildx Bake", "按 bake 文件构建。", docs.buildxBake,
+        s => join([docker(s), "buildx bake", s.push ? "--push" : "", s.noCache ? "--no-cache" : "", s.extra, s.targetName || ""]),
+        "按 docker-bake.hcl、compose 文件或指定 target 批量构建，适合多镜像项目。",
+        [["target name", "bake target 名称；为空构建默认 target。"], ["push", "生成 --push。"], ["no-cache", "禁用缓存。"], ["extra", "可填 -f docker-bake.hcl。"]],
+        ["bake 会按配置批量构建，执行前先确认 target 范围。"]),
+      cmd("docker-build-legacy", "build", "Docker Build", "传统 docker build。", docs.buildx,
+        s => join([docker(s), "build", s.noCache ? "--no-cache" : "", tagArg(s), dockerfileArg(s), buildArg(s), targetStageArg(s), s.extra, val(s.buildContext, ".")]),
+        "使用 docker build 构建镜像；现代 Docker 中通常等价到 BuildKit/Buildx 路径。",
+        [["target image", "构建 tag。"], ["Dockerfile", "Dockerfile 路径。"]],
+        ["需要多架构时优先用 buildx build。"]),
+
+      cmd("compose-config", "compose", "Compose Config", "校验 Compose 配置。", docs.compose,
+        s => join([compose(s), "config", s.extra]),
+        "解析并输出 Compose 配置，适合启动前检查变量替换和合并结果。",
+        [["compose file", "生成 -f。"], ["compose project", "生成 -p。"]],
+        ["先 config 再 up 可以减少配置错误。"]),
+      cmd("compose-up", "compose", "Compose Up", "启动 Compose 服务。", docs.composeUp,
+        s => join([compose(s), "up", s.detach ? "-d" : "", s.noCache ? "--build" : "", s.force ? "--force-recreate" : "", s.extra, s.service]),
+        "创建、启动并可附加到 Compose 服务。detach 打开时后台运行。",
+        [["compose service", "可选服务名。"], ["detach", "生成 -d。"], ["no-cache", "这里生成 --build。"]],
+        ["服务镜像或配置变更后建议加 --build 或 --force-recreate。"]),
+      cmd("compose-down", "compose", "Compose Down", "停止并删除 Compose 资源。", docs.composeDown,
+        s => join([compose(s), "down", s.remove ? "--volumes" : "", s.force ? "--remove-orphans" : "", s.extra]),
+        "停止并删除 Compose 创建的容器和默认网络，可选删除 volume 和孤儿容器。",
+        [["rm/cleanup", "生成 --volumes。"], ["force", "生成 --remove-orphans。"]],
+        ["--volumes 会删除数据卷，执行前确认数据可丢弃。"]),
+      cmd("compose-logs", "compose", "Compose Logs", "查看服务日志。", docs.compose,
+        s => join([compose(s), "logs", s.follow ? "-f" : "", "--tail", tailValue(s), s.extra, s.service]),
+        "查看 Compose 服务日志，可按服务名过滤。",
+        [["compose service", "服务名。"], ["follow", "持续跟随。"], ["extra", "可填 --since 1h。"]],
+        ["日志量大时限制 tail 或 since。"]),
+      cmd("compose-exec", "compose", "Compose Exec", "进入服务容器。", docs.compose,
+        s => join([compose(s), "exec", s.interactive ? "" : "-T", s.service || "<service>", val(s.command, "sh")]),
+        "在运行中的 Compose 服务容器中执行命令。",
+        [["compose service", "服务名。"], ["container command", "容器内命令。"], ["interactive", "关闭时生成 -T。"]],
+        ["exec 需要服务已经运行。"]),
+      cmd("compose-run", "compose", "Compose Run", "一次性服务命令。", docs.compose,
+        s => join([compose(s), "run", s.remove ? "--rm" : "", s.service || "<service>", val(s.command, "sh")]),
+        "为 Compose 服务启动一次性命令容器，常用于 migration、调试 shell。",
+        [["compose service", "服务名。"], ["rm/cleanup", "生成 --rm。"]],
+        ["run 可能不会自动映射服务端口，按需加 --service-ports。"]),
+      cmd("compose-ps", "compose", "Compose PS", "查看 Compose 容器。", docs.compose,
+        s => join([compose(s), "ps", s.all ? "-a" : "", s.service]),
+        "查看 Compose 项目下容器状态。",
+        [["all", "显示所有状态。"], ["compose service", "可选服务名。"]],
+        ["排查启动失败时加 -a。"]),
+      cmd("compose-build", "compose", "Compose Build", "构建服务镜像。", docs.compose,
+        s => join([compose(s), "build", s.noCache ? "--no-cache" : "", s.push ? "--push" : "", s.extra, s.service]),
+        "构建 Compose 服务镜像。",
+        [["compose service", "服务名。"], ["no-cache", "禁用缓存。"], ["push", "构建后推送。"]],
+        ["镜像 tag 由 compose 文件 image 字段或项目名推导。"]),
+      cmd("compose-pull-push", "compose", "Compose Pull/Push", "拉取或推送服务镜像。", docs.compose,
+        s => join([compose(s), s.push ? "push" : "pull", s.extra, s.service]),
+        "按 compose 文件拉取或推送服务镜像。push 打开时生成 compose push，否则生成 compose pull。",
+        [["compose service", "服务名。"], ["push", "切换为 push。"]],
+        ["私有 registry 需要先 docker login。"]),
+      cmd("compose-ls", "compose", "Compose LS", "列出 Compose 项目。", docs.compose,
+        s => join([docker(s), "compose ls", s.all ? "-a" : "", s.filter ? `--filter ${shellWord(s.filter)}` : ""]),
+        "列出当前 Docker context 下的 Compose 项目。",
+        [["all", "显示所有项目。"], ["filter / format", "可填 status=running 等过滤条件。"]],
+        ["如果看不到项目，先确认 Docker context 和 compose project name。"]),
+      cmd("compose-images", "compose", "Compose Images", "列出服务镜像。", docs.compose,
+        s => join([compose(s), "images", s.service]),
+        "列出 Compose 项目服务使用的镜像和容器。",
+        [["compose service", "可选服务名。"]],
+        ["确认 compose up 使用的是不是你刚构建/拉取的镜像。"]),
+      cmd("compose-top", "compose", "Compose Top", "查看服务进程。", docs.compose,
+        s => join([compose(s), "top", s.service]),
+        "查看 Compose 服务容器内进程。",
+        [["compose service", "可选服务名。"]],
+        ["服务卡住时可先 top 再 logs/exec。"]),
+      cmd("compose-stats", "compose", "Compose Stats", "查看服务资源。", docs.compose,
+        s => join([compose(s), "stats", s.all ? "--all" : "", s.extra || "--no-stream", s.service]),
+        "查看 Compose 服务容器 CPU、内存、网络和 IO 使用情况。",
+        [["compose service", "可选服务名。"], ["all", "显示所有服务。"], ["extra", "默认 --no-stream；可清空改为实时流。"]],
+        ["长时间实时 stats 会持续占用终端输出。"]),
+      cmd("compose-events", "compose", "Compose Events", "查看 Compose 事件。", docs.compose,
+        s => join([compose(s), "events", s.extra, s.service]),
+        "实时查看 Compose 项目事件，适合观察容器创建、退出、健康状态等变化。",
+        [["compose service", "可选服务名。"], ["extra", "可填 --json。"]],
+        ["事件流会持续运行，结束用 Ctrl-C。"]),
+      cmd("compose-port", "compose", "Compose Port", "查看服务端口映射。", docs.compose,
+        s => join([compose(s), "port", s.service || "<service>", val(s.containerPort, "<container-port>")]),
+        "查看 Compose 服务容器端口映射到宿主机的地址和端口。",
+        [["compose service", "服务名。"], ["container port", "容器端口。"]],
+        ["访问失败时先确认服务端口是否真的被发布。"]),
+      cmd("compose-cp", "compose", "Compose CP", "复制服务容器文件。", docs.compose,
+        s => join([compose(s), "cp", `${s.service || "<service>"}:${val(s.outputFile, "/path/in/container")}`, val(s.mount, "./")]),
+        "在 Compose 服务容器和宿主机之间复制文件。默认模板是从服务容器复制到本地。",
+        [["compose service", "服务名。"], ["output file", "容器内路径。"], ["mount", "本地目标路径。"]],
+        ["复制大文件前确认磁盘空间。"]),
+      cmd("compose-restart", "compose", "Compose Restart", "重启服务。", docs.compose,
+        s => join([compose(s), "restart", s.extra, s.service]),
+        "重启 Compose 服务容器。",
+        [["compose service", "可选服务名。"], ["extra", "可填 -t 30 指定超时。"]],
+        ["restart 不会重新构建镜像；镜像变更后用 up --build。"]),
+      cmd("compose-stop", "compose", "Compose Stop", "停止服务。", docs.compose,
+        s => join([compose(s), "stop", s.extra, s.service]),
+        "停止 Compose 服务但保留容器和网络。",
+        [["compose service", "可选服务名。"], ["extra", "可填 -t 30。"]],
+        ["需要删除资源时用 down 或 rm。"]),
+      cmd("compose-start", "compose", "Compose Start", "启动已创建服务。", docs.compose,
+        s => join([compose(s), "start", s.service]),
+        "启动已创建但停止的 Compose 服务容器。",
+        [["compose service", "可选服务名。"]],
+        ["如果配置或镜像变更，需要 up 重新创建。"]),
+      cmd("compose-rm", "compose", "Compose RM", "删除停止服务容器。", docs.compose,
+        s => join([compose(s), "rm", s.force ? "-f" : "", s.remove ? "-v" : "", s.service]),
+        "删除已停止的 Compose 服务容器，可选删除匿名 volume。",
+        [["compose service", "可选服务名。"], ["force", "跳过确认。"], ["rm/cleanup", "生成 -v。"]],
+        ["删除前确认容器里没有需要拷出的文件。"]),
+      cmd("compose-watch", "compose", "Compose Watch", "监听文件变更。", docs.compose,
+        s => join([compose(s), "watch", s.noCache ? "--no-up" : "", s.service]),
+        "按 compose.yaml 中 develop/watch 规则监听文件变更并同步或重建服务。",
+        [["compose service", "可选服务名。"], ["no-cache", "这里生成 --no-up，仅监听不自动启动。"]],
+        ["需要 compose 文件配置 develop.watch 才能发挥作用。"]),
+      cmd("compose-wait", "compose", "Compose Wait", "等待服务停止。", docs.compose,
+        s => join([compose(s), "wait", s.service]),
+        "阻塞等待 Compose 服务容器停止，并返回退出状态。",
+        [["compose service", "可选服务名。"]],
+        ["适合一次性任务服务；长跑服务会一直等待。"]),
+      cmd("compose-kill", "compose", "Compose Kill", "强制停止服务。", docs.compose,
+        s => join([compose(s), "kill", s.extra || "", s.service]),
+        "向 Compose 服务容器发送信号，默认强制终止。",
+        [["compose service", "可选服务名。"], ["extra", "可填 -s SIGTERM。"]],
+        ["优先使用 stop；kill 会更直接地中断服务。"]),
+      cmd("compose-pause", "compose", "Compose Pause", "暂停服务。", docs.compose,
+        s => join([compose(s), "pause", s.service]),
+        "暂停 Compose 服务容器。",
+        [["compose service", "可选服务名。"]],
+        ["服务会无响应；恢复用 Compose Unpause。"]),
+      cmd("compose-unpause", "compose", "Compose Unpause", "恢复服务。", docs.compose,
+        s => join([compose(s), "unpause", s.service]),
+        "恢复被暂停的 Compose 服务容器。",
+        [["compose service", "可选服务名。"]],
+        ["只对 pause 状态服务有效。"]),
+      cmd("compose-create", "compose", "Compose Create", "创建但不启动服务。", docs.compose,
+        s => join([compose(s), "create", s.force ? "--force-recreate" : "", s.noCache ? "--build" : "", s.service]),
+        "创建 Compose 服务容器但不启动，适合预创建后检查配置或镜像。",
+        [["compose service", "可选服务名。"], ["force", "强制重新创建。"], ["no-cache", "这里生成 --build。"]],
+        ["create 不会启动服务；启动需要 compose start。"]),
+
+      cmd("network-ls", "network", "Network LS", "列出网络。", docs.network,
+        s => join([docker(s), "network ls", s.filter ? `--filter ${shellWord(s.filter)}` : ""]),
+        "列出 Docker networks。",
+        [["filter / format", "可填 driver=bridge、name=app。"]],
+        ["默认 bridge、host、none 是 Docker 内置网络。"]),
+      cmd("network-create", "network", "Network Create", "创建网络。", docs.network,
+        s => join([docker(s), "network create", s.extra || "--driver bridge", val(s.network, "<network>")]),
+        "创建 Docker network，默认模板使用 bridge driver。",
+        [["network", "网络名。"], ["extra", "默认 --driver bridge。"]],
+        ["多容器本地联调建议显式创建同一个 network。"]),
+      cmd("network-inspect", "network", "Network Inspect", "查看网络详情。", docs.network,
+        s => join([docker(s), "network inspect", val(s.network, "<network>")]),
+        "查看 network 的 subnet、gateway、连接的容器和 IP。",
+        [["network", "网络名。"]],
+        ["服务连不通时看容器是否真的接入该网络。"]),
+      cmd("network-connect", "network", "Network Connect", "连接容器到网络。", docs.network,
+        s => join([docker(s), "network connect", val(s.network, "<network>"), val(s.container, "<container>")]),
+        "把运行中的容器连接到指定 network。",
+        [["network", "网络名。"], ["container", "容器名。"]],
+        ["容器连接多个网络时 DNS/路由行为需要确认。"]),
+      cmd("network-disconnect", "network", "Network Disconnect", "断开容器网络。", docs.network,
+        s => join([docker(s), "network disconnect", s.force ? "--force" : "", val(s.network, "<network>"), val(s.container, "<container>")]),
+        "把容器从指定 Docker network 断开。",
+        [["network", "网络名。"], ["container", "容器名。"], ["force", "强制断开。"]],
+        ["这会中断该网络上的容器通信。"]),
+      cmd("network-rm", "network", "Network RM", "删除网络。", docs.network,
+        s => join([docker(s), "network rm", val(s.network, "<network>")]),
+        "删除未被容器使用的 Docker network。",
+        [["network", "网络名。"]],
+        ["删除前先 inspect 确认没有容器依赖。"]),
+      cmd("network-prune", "network", "Network Prune", "清理未使用网络。", docs.networkPrune,
+        s => join([docker(s), "network prune", s.force ? "-f" : "", s.filter ? `--filter ${shellWord(s.filter)}` : ""]),
+        "删除所有未被容器使用的 Docker networks，可用 filter 限制清理范围。",
+        [["force", "跳过确认。"], ["filter / format", "可填 until=24h、label=xxx。"]],
+        ["这是清理操作；执行前确认不需要这些自定义 network。"]),
+      cmd("volume-ls", "network", "Volume LS", "列出卷。", docs.volume,
+        s => join([docker(s), "volume ls", s.filter ? `--filter ${shellWord(s.filter)}` : ""]),
+        "列出 Docker volumes。",
+        [["filter / format", "可填 dangling=true。"]],
+        ["未使用 volume 可能仍包含重要数据。"]),
+      cmd("volume-create", "network", "Volume Create", "创建卷。", docs.volume,
+        s => join([docker(s), "volume create", s.extra, val(s.volume, "<volume>")]),
+        "创建 named volume。",
+        [["volume", "卷名。"], ["extra", "可填 --driver 或 --opt。"]],
+        ["本地数据库数据建议用 named volume，而不是匿名卷。"]),
+      cmd("volume-inspect", "network", "Volume Inspect", "查看卷详情。", docs.volume,
+        s => join([docker(s), "volume inspect", val(s.volume, "<volume>")]),
+        "查看 volume mountpoint、driver、labels 等信息。",
+        [["volume", "卷名。"]],
+        ["直接修改 mountpoint 文件需谨慎。"]),
+      cmd("volume-rm", "network", "Volume RM", "删除卷。", docs.volume,
+        s => join([docker(s), "volume rm", s.force ? "--force" : "", val(s.volume, "<volume>")]),
+        "删除 Docker volume。",
+        [["volume", "卷名。"], ["force", "强制删除。"]],
+        ["这是数据删除操作，执行前确认不再需要。"]),
+      cmd("volume-prune", "network", "Volume Prune", "清理未使用卷。", docs.volumePrune,
+        s => join([docker(s), "volume prune", s.force ? "-f" : "", s.all ? "--all" : "", s.filter ? `--filter ${shellWord(s.filter)}` : ""]),
+        "删除未被容器使用的 volume。all 打开时包含未使用的 named volumes。",
+        [["force", "跳过确认。"], ["all", "包含未使用 named volume。"], ["filter / format", "可填 label=xxx。"]],
+        ["这是数据删除操作；不要在不确认数据用途时执行。"]),
+
+      cmd("system-df", "system", "System DF", "查看 Docker 磁盘占用。", docs.systemDf,
+        s => join([docker(s), "system df", s.verbose ? "-v" : ""]),
+        "查看镜像、容器、volume、build cache 的磁盘占用。",
+        [["verbose", "生成 -v 详情。"]],
+        ["清理前先看 df，避免误删有效缓存。"]),
+      cmd("system-prune", "system", "System Prune", "清理未使用资源。", docs.systemPrune,
+        s => join([docker(s), "system prune", s.force ? "-f" : "", s.all ? "-a" : "", s.remove ? "--volumes" : ""]),
+        "清理停止容器、未使用网络、悬空镜像和构建缓存；all 打开时清理所有未使用镜像；rm/cleanup 打开时包含 volume。",
+        [["force", "跳过确认。"], ["all", "包含所有未使用镜像。"], ["rm/cleanup", "包含 volume。"]],
+        ["--volumes 可能删除数据库数据，执行前确认。"]),
+      cmd("image-prune", "system", "Image Prune", "清理镜像。", docs.index,
+        s => join([docker(s), "image prune", s.force ? "-f" : "", s.all ? "-a" : "", s.filter ? `--filter ${shellWord(s.filter)}` : ""]),
+        "清理悬空或未使用镜像。",
+        [["all", "清理所有未使用镜像。"], ["filter / format", "可填 until=24h。"]],
+        ["all 比默认更激进，可能需要重新拉取镜像。"]),
+      cmd("container-prune", "system", "Container Prune", "清理停止容器。", docs.containerPrune,
+        s => join([docker(s), "container prune", s.force ? "-f" : "", s.filter ? `--filter ${shellWord(s.filter)}` : ""]),
+        "删除所有停止的容器，可用 filter 限制时间或 label。",
+        [["force", "跳过确认。"], ["filter / format", "可填 until=24h、label=xxx。"]],
+        ["停止容器的日志和可复制文件会随容器删除而丢失。"]),
+      cmd("builder-prune", "system", "Builder Prune", "清理构建缓存。", docs.index,
+        s => join([docker(s), "builder prune", s.force ? "-f" : "", s.all ? "-a" : "", s.filter ? `--filter ${shellWord(s.filter)}` : ""]),
+        "清理 BuildKit/build cache。",
+        [["all", "包含所有未使用缓存。"], ["filter / format", "可填 until=24h。"]],
+        ["清理后后续构建会变慢。"]),
+      cmd("docker-info", "system", "Docker Info", "查看 daemon 信息。", docs.index,
+        s => join([docker(s), "info", s.filter ? `--format ${shellWord(s.filter)}` : ""]),
+        "查看 Docker client 连接的 daemon、存储驱动、镜像/容器数量、Cgroup、Runtime 等信息。",
+        [["filter / format", "可填 Go template。"]],
+        ["排查 Docker Desktop/Engine 环境时先看 info。"]),
+      cmd("docker-version", "system", "Docker Version", "查看版本。", docs.index,
+        s => join([docker(s), "version", s.filter ? `--format ${shellWord(s.filter)}` : ""]),
+        "查看 Docker client/server 版本。",
+        [["filter / format", "可填 Go template。"]],
+        ["client 和 server 版本不一致时注意功能兼容。"]),
+      cmd("context-ls", "system", "Context LS", "列出 context。", docs.context,
+        s => join([docker(s), "context ls"]),
+        "列出本机 Docker contexts。",
+        [],
+        ["很多“连错 Docker”的问题来自 context 不对。"]),
+      cmd("context-show", "system", "Context Show", "显示当前 context。", docs.context,
+        s => join([docker(s), "context show"]),
+        "显示当前默认 Docker context。",
+        [],
+        ["如果命令打到错误 daemon，先确认当前 context。"]),
+      cmd("context-inspect", "system", "Context Inspect", "查看 context 详情。", docs.contextInspect,
+        s => join([docker(s), "context inspect", val(s.context, "<context>")]),
+        "查看 Docker context 的 endpoint、TLS、orchestrator 等配置。",
+        [["context", "目标 context 名称。"]],
+        ["输出可能包含远端 Docker endpoint 信息。"]),
+      cmd("context-create", "system", "Context Create", "创建 context。", docs.contextCreate,
+        s => join(["docker context create", val(s.targetName || s.context, "<context>"), s.extra || "--docker host=ssh://user@host"]),
+        "创建新的 Docker context，常用于切换到远端 daemon 或 SSH Docker 主机。",
+        [["target name", "新 context 名称。"], ["context", "未填 target name 时复用为名称。"], ["extra", "默认 --docker host=ssh://user@host。"]],
+        ["这是本地 Docker CLI 配置变更；创建后可用 context use 切换。"]),
+      cmd("context-use", "system", "Context Use", "切换 context。", docs.context,
+        s => join(["docker context use", val(s.context, "<context>")]),
+        "切换当前默认 Docker context。",
+        [["context", "目标 context 名称。"]],
+        ["这是全局状态变更，会影响后续 docker 命令。"]),
+      cmd("events", "system", "Docker Events", "查看 daemon 事件。", docs.index,
+        s => join([docker(s), "events", s.filter ? `--filter ${shellWord(s.filter)}` : "", s.extra]),
+        "实时输出 Docker daemon 事件，适合观察容器创建、停止、OOM、网络连接等事件。",
+        [["filter / format", "可填 container=app、event=oom。"], ["extra", "可填 --since 1h。"]],
+        ["事件流会持续运行，结束用 Ctrl-C。"]),
+
+      cmd("scout-quickview", "security", "Scout Quickview", "镜像安全概览。", docs.scout,
+        s => join([docker(s), "scout quickview", val(s.image || s.targetImage, "<image:tag>")]),
+        "使用 Docker Scout 查看镜像漏洞和基础镜像概览。",
+        [["image", "镜像引用。"]],
+        ["需要 Docker Scout 可用并可能需要登录。"]),
+      cmd("scout-cves", "security", "Scout CVEs", "列出镜像 CVE。", docs.scout,
+        s => join([docker(s), "scout cves", val(s.image || s.targetImage, "<image:tag>")]),
+        "列出镜像中的 CVE 信息。",
+        [["image", "镜像引用。"]],
+        ["漏洞结果依赖数据库和镜像 SBOM 可用性。"]),
+      cmd("scout-recommend", "security", "Scout Recommendations", "基础镜像升级建议。", docs.scout,
+        s => join([docker(s), "scout recommendations", val(s.image || s.targetImage, "<image:tag>")]),
+        "查看 Docker Scout 对基础镜像升级的建议。",
+        [["image", "镜像引用。"]],
+        ["升级基础镜像后需要回归测试应用行为。"]),
+      cmd("scout-sbom", "security", "Scout SBOM", "查看镜像 SBOM。", docs.scout,
+        s => join([docker(s), "scout sbom", val(s.image || s.targetImage, "<image:tag>")]),
+        "生成或查看镜像的软件物料清单，适合排查依赖包和许可证来源。",
+        [["image", "镜像引用。"]],
+        ["SBOM 输出可能很长，按需配合 extra 增加格式参数。"]),
+      cmd("inspect-format-env", "security", "Inspect Env", "查看镜像/容器环境变量。", docs.inspect,
+        s => join([docker(s), "inspect", "--format", "'{{json .Config.Env}}'", val(s.container || s.image, "<container-or-image>")]),
+        "用 inspect format 提取环境变量，适合检查镜像默认 ENV 或容器运行时 ENV。",
+        [["container/image", "容器或镜像。"]],
+        ["输出可能包含敏感变量。"]),
+      cmd("inspect-entrypoint", "security", "Inspect Entrypoint", "查看入口命令。", docs.inspect,
+        s => join([docker(s), "inspect", "--format", "'Entrypoint={{json .Config.Entrypoint}} Cmd={{json .Config.Cmd}}'", val(s.image || s.container, "<image-or-container>")]),
+        "提取镜像或容器的 Entrypoint 和 Cmd。",
+        [["image/container", "镜像或容器。"]],
+        ["启动失败时先确认 entrypoint/cmd 是否符合预期。"]),
+      cmd("manifest-inspect-sec", "security", "Manifest Inspect", "查看 manifest 元数据。", docs.manifest,
+        s => join([docker(s), "manifest inspect", val(s.targetImage || s.image, "<image:tag>")]),
+        "查看镜像 manifest，确认 digest、平台和 layer 信息。",
+        [["image/target image", "镜像引用。"]],
+        ["私有镜像可能需要先登录。"]),
+      cmd("image-digest-list", "security", "List Digests", "列出镜像 digest。", docs.imageLs,
+        s => join([docker(s), "image ls --digests", s.filter ? `--filter ${shellWord(s.filter)}` : "", s.image || ""]),
+        "在本地镜像列表中显示 digest，便于确认镜像内容身份。",
+        [["image", "可选 repository。"], ["filter / format", "可选过滤。"]],
+        ["同一 tag 在不同时间可能指向不同 digest。"])
+    ];
+
+    const state = {
+      category: "images",
+      commandId: "image-ls",
+      tab: "explain",
+      order: loadJson(ORDER_KEY, {}),
+      input: loadJson(INPUT_KEY, {})
+    };
+    let pointerSort = null;
+    const els = {
+      categoryList: document.getElementById("categoryList"),
+      commandList: document.getElementById("commandList"),
+      commandListTitle: document.getElementById("commandListTitle"),
+      selectedTitle: document.getElementById("selectedTitle"),
+      selectedCategory: document.getElementById("selectedCategory"),
+      selectedDesc: document.getElementById("selectedDesc"),
+      commandCode: document.getElementById("commandCode"),
+      warningList: document.getElementById("warningList"),
+      copyBtn: document.getElementById("copyBtn"),
+      copyStatus: document.getElementById("copyStatus"),
+      tabBody: document.getElementById("tabBody"),
+      commandFilter: document.getElementById("commandFilter"),
+      resetInputsBtn: document.getElementById("resetInputsBtn"),
+      resetOrderBtn: document.getElementById("resetOrderBtn")
+    };
+    init();
+
+    function cmd(id, category, name, desc, doc, build, explain, params, tips, categories) {
+      return { id, category, categories, name, desc, doc, build, explain, params: uniqueRows(params.concat(commonParams)), tips };
+    }
+    function init() {
+      restoreInputs();
+      renderCategories();
+      renderCommandList();
+      renderDetails();
+      bindInputs();
+      bindGlobalButtons();
+    }
+    function bindInputs() {
+      document.querySelectorAll("[data-field]").forEach(el => {
+        const update = () => {
+          state.input[el.dataset.field] = el.type === "checkbox" ? el.checked : el.value;
+          localStorage.setItem(INPUT_KEY, JSON.stringify(state.input));
+          renderDetails();
+        };
+        el.addEventListener("input", update);
+        el.addEventListener("change", update);
+      });
+      els.commandFilter.addEventListener("input", renderCommandList);
+      document.querySelectorAll(".tab-button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.tab = btn.dataset.tab;
+          document.querySelectorAll(".tab-button").forEach(item => item.classList.toggle("active", item.dataset.tab === state.tab));
+          renderTab();
+        });
+      });
+    }
+    function bindGlobalButtons() {
+      els.copyBtn.addEventListener("click", async () => {
+        const text = els.commandCode.textContent.trim();
+        try {
+          await navigator.clipboard.writeText(text);
+          els.copyStatus.textContent = "已复制";
+        } catch (err) {
+          fallbackCopy(text);
+          els.copyStatus.textContent = "已复制";
+        }
+        window.setTimeout(() => { els.copyStatus.textContent = ""; }, 1600);
+      });
+      els.resetInputsBtn.addEventListener("click", () => {
+        state.input = {};
+        localStorage.removeItem(INPUT_KEY);
+        document.querySelectorAll("[data-field]").forEach(el => {
+          if (el.type === "checkbox") el.checked = false;
+          else el.value = "";
+        });
+        renderDetails();
+      });
+      els.resetOrderBtn.addEventListener("click", () => {
+        delete state.order[state.category];
+        localStorage.setItem(ORDER_KEY, JSON.stringify(state.order));
+        renderCommandList();
+      });
+    }
+    function restoreInputs() {
+      document.querySelectorAll("[data-field]").forEach(el => {
+        const value = state.input[el.dataset.field];
+        if (el.type === "checkbox") el.checked = Boolean(value);
+        else if (value != null) el.value = value;
+      });
+    }
+    function renderCategories() {
+      els.categoryList.innerHTML = "";
+      categories.forEach(cat => {
+        const count = commands.filter(cmd => commandCategories(cmd).includes(cat.id)).length;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `category-button ${state.category === cat.id ? "active" : ""}`;
+        btn.dataset.category = cat.id;
+        btn.innerHTML = `<span class="cat-icon">${cat.icon}</span><span class="cat-name">${escapeHtml(cat.name)}</span><span class="cat-count">${count}</span>`;
+        btn.addEventListener("click", () => {
+          state.category = cat.id;
+          const first = orderedCommands(cat.id)[0];
+          if (first) state.commandId = first.id;
+          renderCategories();
+          renderCommandList();
+          renderDetails();
+        });
+        els.categoryList.appendChild(btn);
+      });
+    }
+    function renderCommandList() {
+      const cat = categories.find(item => item.id === state.category);
+      const filter = els.commandFilter.value.trim().toLowerCase();
+      els.commandListTitle.textContent = cat ? cat.name : "命令";
+      els.commandList.innerHTML = "";
+      const list = orderedCommands(state.category).filter(cmd => !filter || `${cmd.name} ${cmd.desc}`.toLowerCase().includes(filter));
+      if (!list.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty-state";
+        empty.textContent = "没有匹配的命令。";
+        els.commandList.appendChild(empty);
+        return;
+      }
+      list.forEach(cmd => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `command-button ${cmd.id === state.commandId ? "active" : ""}`;
+        btn.draggable = true;
+        btn.dataset.commandId = cmd.id;
+        btn.innerHTML = `<span class="drag-handle" title="拖拽排序">≡</span><span><span class="cmd-name">${escapeHtml(cmd.name)}</span><span class="cmd-desc">${escapeHtml(cmd.desc)}</span></span>`;
+        btn.addEventListener("click", () => {
+          state.commandId = cmd.id;
+          renderCommandList();
+          renderDetails();
+        });
+        btn.addEventListener("dragstart", event => {
+          btn.classList.add("dragging");
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", cmd.id);
+        });
+        btn.addEventListener("dragend", () => btn.classList.remove("dragging"));
+        btn.addEventListener("dragover", event => {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+        });
+        btn.addEventListener("drop", event => {
+          event.preventDefault();
+          reorderCommand(event.dataTransfer.getData("text/plain"), cmd.id);
+        });
+        btn.querySelector(".drag-handle").addEventListener("pointerdown", event => beginPointerSort(event, cmd.id, btn));
+        els.commandList.appendChild(btn);
+      });
+    }
+    function renderDetails() {
+      const cmd = selectedCommand();
+      const s = readState();
+      const category = categories.find(item => item.id === state.category) || categories.find(item => item.id === cmd.category);
+      const result = buildCommand(cmd, s);
+      els.selectedTitle.textContent = cmd.name;
+      els.selectedCategory.textContent = category ? category.name : cmd.category;
+      els.selectedDesc.textContent = cmd.desc;
+      els.commandCode.textContent = result.command;
+      els.warningList.innerHTML = "";
+      els.warningList.classList.toggle("show", result.warnings.length > 0);
+      result.warnings.forEach(text => {
+        const li = document.createElement("li");
+        li.textContent = text;
+        els.warningList.appendChild(li);
+      });
+      renderTab();
+    }
+    function renderTab() {
+      const cmd = selectedCommand();
+      if (state.tab === "params") {
+        const result = buildCommand(cmd, readState());
+        const commandRows = optionRowsForCommand(result.command);
+        els.tabBody.innerHTML = `${paramSectionHtml("命令参数", commandRows, "当前生成命令中实际出现的命令行选项和子命令。")}${paramSectionHtml("页面输入字段", cmd.params, "这些字段会参与拼接命令；没有填写的字段会跳过或保留占位符。")}${sourceHtml(cmd)}`;
+      } else if (state.tab === "tips") {
+        els.tabBody.innerHTML = `<ul class="tips">${cmd.tips.map(tip => `<li>${inlineCode(escapeHtml(tip))}</li>`).join("")}</ul>${sourceHtml(cmd)}`;
+      } else {
+        els.tabBody.innerHTML = `<p class="explain">${escapeHtml(cmd.explain)}</p>${sourceHtml(cmd)}`;
+      }
+    }
+    function sourceHtml(cmd) {
+      return `<div class="source-row"><span>依据 Docker 官方 CLI reference；本工具版本 <code>${VERSION}</code></span><a href="${cmd.doc || docs.index}" target="_blank" rel="noreferrer">打开官方文档</a></div>`;
+    }
+    function paramSectionHtml(title, rows, note) {
+      const body = rows.length
+        ? `<table class="param-table"><thead><tr><th style="width:190px;">参数</th><th>说明</th></tr></thead><tbody>${rows.map(row => `<tr><td><code>${escapeHtml(row[0])}</code></td><td>${escapeHtml(row[1])}</td></tr>`).join("")}</tbody></table>`
+        : `<div class="empty-state">当前命令没有额外命令行选项。</div>`;
+      return `<div class="param-section"><h3 class="param-title">${escapeHtml(title)}</h3><p class="param-note">${escapeHtml(note)}</p>${body}</div>`;
+    }
+    function optionRowsForCommand(command) {
+      return uniqueRows(optionHelp.filter(row => row[1].test(command)).map(row => [row[0], row[2]]));
+    }
+    function uniqueRows(rows) {
+      const seen = new Set();
+      return rows.filter(row => {
+        const key = row[0];
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+    function selectedCommand() {
+      return commands.find(cmd => cmd.id === state.commandId) || commands[0];
+    }
+    function commandCategories(cmd) {
+      return Array.isArray(cmd.categories) ? cmd.categories : [cmd.category];
+    }
+    function orderedCommands(categoryId) {
+      const list = commands.filter(cmd => commandCategories(cmd).includes(categoryId));
+      const saved = state.order[categoryId];
+      if (!Array.isArray(saved)) return list;
+      const map = new Map(list.map(cmd => [cmd.id, cmd]));
+      return saved.map(id => map.get(id)).filter(Boolean).concat(list.filter(cmd => !saved.includes(cmd.id)));
+    }
+    function reorderCommand(sourceId, targetId) {
+      if (!sourceId || !targetId || sourceId === targetId) return;
+      const current = orderedCommands(state.category).map(cmd => cmd.id);
+      const from = current.indexOf(sourceId);
+      const to = current.indexOf(targetId);
+      if (from < 0 || to < 0) return;
+      current.splice(from, 1);
+      current.splice(to, 0, sourceId);
+      state.order[state.category] = current;
+      localStorage.setItem(ORDER_KEY, JSON.stringify(state.order));
+      renderCommandList();
+    }
+    function beginPointerSort(event, sourceId, sourceEl) {
+      event.preventDefault();
+      event.stopPropagation();
+      pointerSort = { sourceId, targetId: null };
+      sourceEl.classList.add("dragging");
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      document.addEventListener("pointermove", handlePointerSortMove);
+      document.addEventListener("pointerup", finishPointerSort, { once: true });
+      document.addEventListener("pointercancel", cancelPointerSort, { once: true });
+    }
+    function handlePointerSortMove(event) {
+      if (!pointerSort) return;
+      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(".command-button");
+      document.querySelectorAll(".command-button.drop-target").forEach(el => el.classList.remove("drop-target"));
+      if (!target || target.dataset.commandId === pointerSort.sourceId) {
+        pointerSort.targetId = null;
+        return;
+      }
+      pointerSort.targetId = target.dataset.commandId;
+      target.classList.add("drop-target");
+    }
+    function finishPointerSort(event) {
+      if (!pointerSort) return;
+      handlePointerSortMove(event);
+      const { sourceId, targetId } = pointerSort;
+      clearPointerSortClasses();
+      pointerSort = null;
+      document.removeEventListener("pointermove", handlePointerSortMove);
+      document.removeEventListener("pointercancel", cancelPointerSort);
+      if (targetId) reorderCommand(sourceId, targetId);
+    }
+    function cancelPointerSort() {
+      clearPointerSortClasses();
+      pointerSort = null;
+      document.removeEventListener("pointermove", handlePointerSortMove);
+    }
+    function clearPointerSortClasses() {
+      document.querySelectorAll(".command-button.dragging, .command-button.drop-target").forEach(el => el.classList.remove("dragging", "drop-target"));
+    }
+    function readState() {
+      const data = {};
+      document.querySelectorAll("[data-field]").forEach(el => {
+        data[el.dataset.field] = el.type === "checkbox" ? el.checked : el.value.trim();
+      });
+      return data;
+    }
+    function buildCommand(cmd, s) {
+      let command = cleanup(cmd.build(s));
+      if (s.workDir) command = cleanup(`cd ${shellWord(s.workDir)} && ${command}`);
+      const warnings = [];
+      if (command.includes("<")) warnings.push("命令中还有占位符，请补充对应输入后再复制执行。");
+      if (/\b(system prune|image prune|builder prune|container prune|volume prune|network prune|volume rm|network rm|network disconnect|image rm|rm -f|kill|pause|unpause|rename|update|--volumes|commit|push|login|logout|manifest create|buildx rm|buildx use|context create|context use)\b/.test(command)) warnings.push("这是可能修改本地资源、删除数据或传输镜像的命令，执行前请确认目标、权限和影响范围。");
+      if (/\b--password-stdin\b/.test(command)) warnings.push("登录命令建议通过管道输入密码，不要把真实密码写入命令历史。");
+      if (/\b(run|exec)\b.*\s-it\b/.test(command) || /\bdocker(?:\s+--context\s+\S+)?\s+(debug|attach)\b/.test(command)) warnings.push("交互式命令会占用当前终端；结束 shell 后容器可能退出。");
+      return { command, warnings };
+    }
+
+    function docker(s) {
+      return join(["docker", s.context ? `--context ${shellWord(s.context)}` : ""]);
+    }
+    function compose(s) {
+      return join([docker(s), "compose", s.composeFile ? `-f ${shellWord(s.composeFile)}` : "", s.project ? `-p ${shellWord(s.project)}` : ""]);
+    }
+    function join(parts) {
+      return parts.filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+    }
+    function cleanup(text) {
+      return String(text).replace(/\s+\|\s+/g, " | ").replace(/\s+/g, " ").trim();
+    }
+    function val(value, placeholder) {
+      return value || placeholder;
+    }
+    function imageRef(s) {
+      const repo = s.repo || "team/app";
+      const tag = s.tag || "latest";
+      return s.registry ? `${s.registry.replace(/\/$/, "")}/${repo}:${tag}` : `${repo}:${tag}`;
+    }
+    function nameArg(s) {
+      return s.container ? `--name ${shellWord(s.container)}` : "";
+    }
+    function portArg(s) {
+      if (!s.hostPort && !s.containerPort) return "";
+      return `-p ${val(s.hostPort, "<host-port>")}:${val(s.containerPort, "<container-port>")}`;
+    }
+    function envArg(s) {
+      return s.env ? `-e ${shellWord(s.env)}` : "";
+    }
+    function volumeArg(s) {
+      return s.mount ? `-v ${shellWord(s.mount)}` : "";
+    }
+    function networkArg(s) {
+      return s.network ? `--network ${shellWord(s.network)}` : "";
+    }
+    function bindMountReadonlyArg(s) {
+      const value = s.mount || "$(pwd):/work";
+      const [src, dst] = value.includes(":") ? value.split(":", 2) : [value, "/work"];
+      return `--mount type=bind,src=${shellMountPart(src)},dst=${shellMountPart(dst)},readonly`;
+    }
+    function tagArg(s) {
+      return `-t ${shellWord(val(s.targetImage || imageRef(s), "<image:tag>"))}`;
+    }
+    function dockerfileArg(s) {
+      return s.dockerfile ? `-f ${shellWord(s.dockerfile)}` : "";
+    }
+    function buildArg(s) {
+      return s.buildArg ? `--build-arg ${shellWord(s.buildArg)}` : "";
+    }
+    function targetStageArg(s) {
+      return s.targetStage ? `--target ${shellWord(s.targetStage)}` : "";
+    }
+    function shellName(s) {
+      return s.command && /^[A-Za-z0-9_./-]+$/.test(s.command) ? s.command : "sh";
+    }
+    function tailValue(s) {
+      return s.filter && /^\d+$/.test(s.filter) ? s.filter : "200";
+    }
+    function shellWord(value) {
+      if (!value) return "";
+      if (/^<[^>]+>$/.test(value)) return value;
+      if (/^\{\{.*\}\}$/.test(value)) return shellQuote(value);
+      if (/^[A-Za-z0-9_./:@%+=,*-]+$/.test(value)) return value;
+      return shellQuote(value);
+    }
+    function shellQuote(value) {
+      return `'${String(value).replace(/'/g, "'\\''")}'`;
+    }
+    function shellMountPart(value) {
+      if (value === "$(pwd)" || /^[A-Za-z0-9_./@%+=-]+$/.test(value)) return value;
+      return shellQuote(value);
+    }
+    function escapeHtml(value) {
+      return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+    function inlineCode(text) {
+      return text.replace(/`([^`]+)`/g, "<code>$1</code>");
+    }
+    function loadJson(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch (err) {
+        return fallback;
+      }
+    }
+    function fallbackCopy(text) {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.style.position = "fixed";
+      area.style.left = "-9999px";
+      document.body.appendChild(area);
+      area.focus();
+      area.select();
+      document.execCommand("copy");
+      area.remove();
+    }
+  </script>
+</body>
+</html>
